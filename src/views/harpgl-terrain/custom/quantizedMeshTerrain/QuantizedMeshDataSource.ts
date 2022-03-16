@@ -76,12 +76,15 @@ export class QuantizedMeshDataSource extends DataSource {
 					new THREE.Vector3(-1 * length, -1 * length, 0),
 					new THREE.Vector3(-1 * length, -1 * length, -1 * length)
 				);
+				let tilingScheme = this.getTilingScheme()
+				const geobox = tilingScheme.getGeoBox(tileKey)
 				// tile.boundingBox.copy
-				const geometry = constructGeometry(decodedMesh, container);
+				const geometry = constructGeometry(decodedMesh, geobox);
 				const material = getMeshMaterial(defaultParams);
 				const terrain = getObject(geometry, material, defaultParams);
 				const shouldSubdivide = this.projection.type === ProjectionType.Spherical;
 				const sourceProjection = this.getTilingScheme().projection;
+		
 				// This is taken from the code for the background plane in OmvDataSource
 				// but doesn't work here for the sphere projection somehow. Requires fix.
 				if (shouldSubdivide) {
