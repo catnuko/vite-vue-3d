@@ -93,7 +93,7 @@ function constructPositionAttribute (vertexData, container) {
   const xScale = containerSize.x / vertexMaxPosition
   const yScale = containerSize.y / vertexMaxPosition
   const zScale = containerSize.z / vertexMaxPosition
-
+  console.log("container size:",containerSize)
   for (let i = 0; i < vertexData.length; i++) {
     positionAttributeArray[i * elementsPerVertex] = vertexData[i] * xScale - containerSize.x / 2
     positionAttributeArray[i * elementsPerVertex + 1] = vertexData[i + vertexCount] * yScale - containerSize.y / 2

@@ -22,7 +22,7 @@
     "cesium": "^1.90.0",
     "dat.gui": "^0.7.9",
     "dtcesium": "^1.0.6",
-    "element-plus": "1.3.0-beta.5",
+    "element-plus": "^2.1.4",
     "flexsearch": "^0.7.21",
     "ht-cesium-utils": "^1.0.4",
     "ht-components": "^1.0.5",

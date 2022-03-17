@@ -73,8 +73,8 @@ function createControls (camera, renderer) {
 
 function createContainer (scene, params) {
   const container = new THREE.Box3(
-    new THREE.Vector3(-150, -150, 0),
-    new THREE.Vector3(150, 150, 150)
+    new THREE.Vector3(-5, -5, 0),
+    new THREE.Vector3(5, 5, 5)
   )
 
   const containerHelper = new THREE.Box3Helper(container, 0x6B6F73)
@@ -121,7 +121,7 @@ function readParams () {
   return savedParamsDecoded
 }
 
-function createUI (scene, params) {
+export function createUI (scene, params) {
   const ui = new dat.GUI()
   const onChange = () => {
     saveParams(params)
