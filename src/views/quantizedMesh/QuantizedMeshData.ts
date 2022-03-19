@@ -86,7 +86,7 @@ export class QuantizedMeshData {
 export function createTileHeader(tileKey: TileKey) {
 	const tileRect = webMercatorTilingScheme.getGeoBox(tileKey);
 	const tileNativeRect = projectionGeoBox(tileRect);
-
+	
 	return {};
 }
 export function createQuantizedMeshDataParameters(decodedMesh, tileKey: TileKey) {
@@ -98,7 +98,13 @@ export function createQuantizedMeshDataParameters(decodedMesh, tileKey: TileKey)
 }
 
 export function projectionGeoBox(geobox: GeoBox) {
-	const southwest = webMercatorTilingScheme.projection.projectPoint({ longitude: geobox.west, latitude: geobox.south });
-	const northeast = webMercatorTilingScheme.projection.projectPoint({ longitude: geobox.east, latitude: geobox.north });
-	return { west: southwest.x, south: southwest.y, east: northeast.x, north: northeast.y };
+	//西南
+	const southWest = webMercatorTilingScheme.projection.projectPoint({ longitude: geobox.west, latitude: geobox.south });
+	//西北
+	const northWest = webMercatorTilingScheme.projection.projectPoint({ longitude: geobox.west, latitude: geobox.north });
+	//东南
+	const southEast = webMercatorTilingScheme.projection.projectPoint({ longitude: geobox.east, latitude: geobox.south });
+	//东北
+	const northEast = webMercatorTilingScheme.projection.projectPoint({ longitude: geobox.east, latitude: geobox.north });
+	return { southWest, northWest, southEast, northEast };
 }

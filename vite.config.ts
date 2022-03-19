@@ -4,7 +4,7 @@ import Pages from "vite-plugin-pages";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-	plugins: [vue(), Pages({ dirs: "src/views", exclude: ["**/*.ts"] })],
+	plugins: [vue(), Pages({ dirs: "src/views", exclude: ["**/*.ts","**/*.js"] })],
 	base: "./",
 	build: {
 		assetsDir: "assets",
