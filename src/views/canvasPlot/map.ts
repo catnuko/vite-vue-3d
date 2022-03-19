@@ -1,13 +1,13 @@
 import { Map, View } from "ol";
+import { DragRotateAndZoom, defaults as defaultInteractions } from "ol/interaction";
 import olPlot from "./plot";
-import OSM from "ol/source/OSM";
-import TileLayer from "ol/layer/Tile";
+export let active, getFeatures;
 export function main(id: string) {
 	const map = new Map({
 		layers: [
-			new TileLayer({
-				source: new OSM(),
-			}),
+			// new TileLayer({
+			// 	source: new OSM(),
+			// }),
 		],
 		view: new View({
 			// center: [108.93, 34.27],
@@ -16,6 +16,12 @@ export function main(id: string) {
 			zoom: 5,
 		}),
 		target: id,
+		interactions: defaultInteractions({
+			doubleClickZoom: false, // 取消双击放大功能交互
+			mouseWheelZoom: false, // 取消滚动鼠标中间的滑轮交互
+			shiftDragZoom: false, // 取消shift+wheel左键拖动交互
+			dragPan: false,
+		}),
 	});
 
 	/* eslint-disable-next-line */
@@ -49,17 +55,19 @@ export function main(id: string) {
 	});
 
 	// 指定标绘类型，开始绘制。
-	function activate(type) {
+	function _activate(type) {
 		plot.plotEdit.deactivate();
 		plot.plotDraw.active(type);
 	}
 
-	function getFeatures() {
+	function _getFeatures() {
 		const features = plot.plotUtils.getFeatures();
 		console.log(JSON.stringify(features));
 		plot.plotUtils.removeAllFeatures();
 		plot.plotEdit.deactivate();
 		plot.plotUtils.addFeatures(features);
 	}
+	active = _activate;
+	getFeatures = _getFeatures;
 	// activate(olPlot.PlotTypes.ATTACK_ARROW)
 }
