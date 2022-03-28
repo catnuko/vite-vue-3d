@@ -22,7 +22,7 @@
 import { defineComponent, onMounted, ref } from 'vue'
 import { main, active, getFeatures } from './map'
 import { HtGlobe } from 'ht-components'
-import { plotType } from './plotType'
+import { plotType } from '../../../../../zhonghaida/dqga/src/components/cl/sandTable/indoor/plotType'
 export default defineComponent({
     name: "harpgl",
     components: { HtGlobe },
