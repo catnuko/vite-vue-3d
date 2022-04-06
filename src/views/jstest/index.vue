@@ -1,35 +1,30 @@
-<template></template>
+<template>
+  <div id="container">
+    <div class="test"></div>
+  </div>
+</template>
 <script lang='ts'>
-import { defineComponent, onMounted } from 'vue'
+import {defineComponent, onMounted} from 'vue'
+
 export default defineComponent({
-    name: "harpgl",
-    setup(props, { slots, emit }) {
-        const points = ['10号网格', '5号网格', '6号网格', '4号网格', '网格9', '11号网格', "号网格", '没有网格号'];
-        points.sort(function (a, b) {
-            const getAreaNum = (item) => {
-                const hasNumber = /\d/g
-                const testres = hasNumber.test(item)
-                let result = 0
-                if (testres) {
-                    const res = item.match(/\d{1,20}/g)
-                    result = Number(res[0])
-                } else {
-                    result = Number.POSITIVE_INFINITY
-                }
-                return result
-            }
-            const an = getAreaNum(a)
-            const bn = getAreaNum(b)
-            return an - bn
-        });
-        console.log(points)
-        return {}
-    },
+  name: "harpgl",
+  setup(props, {slots, emit}) {
+    return {}
+  },
 })
 </script>
 <style scoped>
-#cesium-map {
-    width: 100%;
-    height: 100%;
+.test {
+  position: absolute;
+  left: 100px;
+  top: 100px;
+  width: 200px;
+  height: 200px;
+  border-bottom: 2px solid #aaa; /*必须有这个属性*/
+  background-color: #cbac1a;
+  border-image-source: linear-gradient(90deg, #3066d2, #c8ebfc, #3066d2);
+  border-image-slice: 2;
+  border-image-repeat: repeat; /*repeat:平铺 round:根据情况放大或缩小 stretch:拉伸 	space:根据情况调整间隙平铺*/
 }
+
 </style>
