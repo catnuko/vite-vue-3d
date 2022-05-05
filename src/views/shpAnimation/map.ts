@@ -50,7 +50,7 @@ const EVENT = {
  * 中文乱码解决方式，修改shp.js源文件，搜索替换下面语句
  * var decoder = createDecoder(encoding||"gbk");
  */
-const SHP_FILE_PATH = "http://localhost:3000/data/乐清市街道.zip";
+const SHP_FILE_PATH = "./data/乐清市街道.zip";
 const LEVEL = 5
 const ROTATE = 30
 const MAX_NUM = 2
