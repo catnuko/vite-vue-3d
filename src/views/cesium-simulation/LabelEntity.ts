@@ -1,9 +1,10 @@
 import Cesium from "dtcesium";
-import { createScreenSpaceEventHandler, giveCartesian3Height, windowPosition2Cartesian3 } from "ht-cesium-utils";
+import { addCartersian3Height, createScreenSpaceEventHandler } from "ht-cesium-utils";
 import { getDefer } from "../../utils/url";
 import { createVNode, handleError } from "vue";
-import { poiIsRenderable } from "@here/harp-mapview";
 import { Popup } from "ht-popup/lib/index";
+import LabelEditPopup from "./LabelEditPopup.vue";
+import { app } from "../../main";
 
 export class Editor {
 	private _enable = false;
@@ -15,10 +16,10 @@ export class Editor {
 		this._handler = hanlder;
 		onclick((picked) => {
 			if (!this._enable) return;
-			console.log(picked);
 			if (picked?.id?._userData?.plotInfo?.plotInstance) {
 				this._plotInstance = picked.id._userData.plotInfo.plotInstance;
 				this._plotInstance.setEditable(true);
+			} else if (picked?.id?._userData?.controlType) {
 			} else {
 				this._plotInstance?.setEditable(false);
 			}
@@ -48,8 +49,9 @@ export class Plot {
 		}
 		this._plotInstance = plotInstance;
 		this._plotInstance
-			.drawGeometry()
-			.then((entity) => {
+			.getControlPoints()
+			.then((positions) => {
+				const entity = this._plotInstance.makeGeometry(positions);
 				this._plotInstance.setGeometrySymbol(entity);
 			})
 			.catch((e) => {
@@ -59,18 +61,18 @@ export class Plot {
 
 	deactive() {
 		if (this._plotInstance) {
-			this._plotInstance.destroy();
+			this._plotInstance.deactive();
 		}
 	}
 }
 
 export interface IPlot {
-	drawGeometry: () => Promise<Cesium.Entity>;
+	getControlPoints: () => Promise<Cesium.Cartesian3[]>;
+	makeGeometry: (positions: Cesium.Cartesian3[]) => Cesium.Entity;
 	setGeometrySymbol: (entity: Cesium.Entity) => void;
 	destroy: () => void;
-	makeGeometry: (position: Cesium.Cartesian3 | Cesium.Cartesian3[]) => Cesium.Entity;
-
 	setEditable(editable);
+	deactive: () => void;
 }
 
 export class LabelPlot implements IPlot {
@@ -78,7 +80,8 @@ export class LabelPlot implements IPlot {
 	private _eleDestroy: Function;
 	private _editable = false;
 	private _entity?: Cesium.Entity;
-
+	private _controlEntity: Cesium.Entity[] = [];
+	removeControlPoints?: (entity: Cesium.Entity) => void;
 	constructor(readonly viewer: Cesium.Viewer) {}
 
 	setEditable(editable) {
@@ -89,19 +92,30 @@ export class LabelPlot implements IPlot {
 				this.setEditable(false);
 			});
 		} else {
-			this.destroy();
+			this.deactive();
 		}
 	}
+	getControlPoints() {
+		let defer = getDefer<Cesium.Cartesian3[]>();
+		const { onclick, hanlder } = createScreenSpaceEventHandler(this.viewer);
+		this._screenSpaceDestroy = () => {
+			hanlder.destroy();
+			defer.reject();
+		};
+		onclick((picked, lonlat, cartesian3) => {
+			defer.resolve([cartesian3]);
+			if (this._screenSpaceDestroy) {
+				this._screenSpaceDestroy();
+				this._screenSpaceDestroy = null;
+			}
+		});
+		return defer.promise;
+	}
 
-	makeGeometry(position) {
+	makeGeometry(positions: Cesium.Cartesian3[]) {
 		const newEntity = this.viewer.entities.add(
 			new Cesium.Entity({
-				position: position,
-				point: {
-					pixelSize: 5,
-					color: Cesium.Color.RED,
-					heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
-				},
+				position: positions[0],
 			})
 		);
 		newEntity._userData = {
@@ -113,83 +127,116 @@ export class LabelPlot implements IPlot {
 		return newEntity;
 	}
 
-	drawGeometry() {
-		let defer = getDefer<Cesium.Entity>();
-		const { onclick, hanlder } = createScreenSpaceEventHandler(this.viewer);
-		this._screenSpaceDestroy = () => {
-			hanlder.destroy();
-			defer.reject();
-		};
-		onclick((picked, lonlat, cartesian3) => {
-			const newEntity = this.makeGeometry(giveCartesian3Height(cartesian3, lonlat.height + 20000));
-			defer.resolve(newEntity);
-			if (this._screenSpaceDestroy) {
-				this._screenSpaceDestroy();
-				this._screenSpaceDestroy = null;
-			}
-		});
-		return defer.promise;
-	}
-
 	setGeometrySymbol(entity: Cesium.Entity) {
 		const self = this;
 		let defer = getDefer();
 		let position = entity.position._value;
 		if (position) {
 			this._eleDestroy = () => {
-				entity.point = null;
+				if (this.removeControlPoints) {
+					this.removeControlPoints(entity);
+					this.removeControlPoints = null;
+				}
 				newPopup.destroy();
 				newPopup = null;
 				document.querySelector("#popupContainer .popup").remove();
 			};
-
-			function onKeyUp(evt) {
-				if (evt.keyCode == "13") {
-					if (self._eleDestroy) {
-						self._eleDestroy();
-						self._eleDestroy = null;
-					}
-					defer.resolve();
+			function onOver(symbol) {
+				if (self._eleDestroy) {
+					self._eleDestroy();
+					self._eleDestroy = null;
 				}
+				defer.resolve();
 			}
-
-			function onInput(evt) {
-				if (evt.target) {
-					if (!entity.label) {
-						entity.label = new Cesium.LabelGraphics({
-							text: "",
-							fillColor: Cesium.Color.WHITE,
-							backgroundColor: Cesium.Color.BLACK,
-							heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
-							disableDepthTestDistance: Number.POSITIVE_INFINITY,
-						});
-					}
-					entity.label.text = evt.target.value;
+			function onSymbolChange(symbol) {
+				if (!entity.label) {
+					entity.label = new Cesium.LabelGraphics({
+						text: "",
+						fillColor: Cesium.Color.WHITE,
+						backgroundColor: Cesium.Color.BLACK,
+						heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
+						disableDepthTestDistance: Number.POSITIVE_INFINITY,
+						font: "25px sans-serif",
+					});
 				}
+				entity.label.text = symbol.text;
+				entity.label.fillColor = Cesium.Color.fromCssColorString(symbol.color);
+				entity.label.font = `${symbol.fontSize}px sans-serif`;
 			}
-
+			let fontSize = 0;
+			try {
+				fontSize = Number(entity.label.font._value.match(/\d+/g)[0]);
+			} catch (error) {}
 			let newPopup = new Popup({
-				component: {
-					render(_ctx, _cache, $props, $setup, $data, $options) {
-						return createVNode("input", {
-							class: "popup",
-							type: "text",
-							placeholder: "...",
-							value: entity.label?.text?._value ?? "",
-							onKeyup: onKeyUp,
-							onInput: onInput,
-						});
+				component: LabelEditPopup,
+				vueAppContext: app._context,
+				offset: [0, 20],
+				props: {
+					symbol: {
+						text: entity.label?.text?._value ?? "",
+						color: entity.label?.fillColor?._value.toCssColorString() ?? "rgba(255,255,255,255)",
+						fontSize: fontSize ? fontSize : 25,
 					},
+					onOver: onOver,
+					onSymbolChange: onSymbolChange,
 				},
-				props: {},
 				position: position,
 				viewer: this.viewer,
 			});
+			this.addControlPoints(entity, newPopup);
 		}
 		return defer.promise;
 	}
-
-	destroy() {
+	addControlPoints(entity: Cesium.Entity, popup?: Popup) {
+		entity.label.disableDepthTestDistance = 0;
+		let panEntity = new Cesium.Entity({
+			position: addCartersian3Height(entity.position._value, 2000),
+			point: {
+				pixelSize: 15,
+				color: Cesium.Color.RED,
+				heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
+				show: true,
+			},
+		});
+		panEntity._userData = {
+			controlType: "control-pan",
+		};
+		const panHandler = createScreenSpaceEventHandler(this.viewer);
+		let moving = false;
+		panHandler.onclick((picked, lonlat, cartesian3) => {
+			if (picked?.id?._userData?.controlType === "control-pan" && !moving) {
+				panHandler.hanlder.setInputAction((movement) => {
+					popup?.hide();
+					let newPosition = this.viewer.scene.pickPosition(movement.endPosition);
+					if (newPosition) {
+						entity.position = newPosition;
+						panEntity.position = newPosition;
+						popup.position = newPosition;
+						moving = true;
+					}
+				}, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+			}
+			if (moving) {
+				panHandler.hanlder.removeInputAction(Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+				moving = false;
+				popup?.show();
+			}
+		});
+		this._controlEntity = [panEntity];
+		this._controlEntity.forEach((e) => {
+			this.viewer.entities.add(e);
+		});
+		this.removeControlPoints = () => {
+			this._controlEntity.forEach((e) => {
+				this.viewer.entities.remove(e);
+			});
+			this._controlEntity.length = 0;
+			panHandler.destroy();
+			popup?.show();
+			entity.label.disableDepthTestDistance = Number.POSITIVE_INFINITY;
+		};
+	}
+	deactive() {
 		if (this._screenSpaceDestroy) {
 			this._screenSpaceDestroy();
 			this._screenSpaceDestroy = null;
@@ -198,5 +245,9 @@ export class LabelPlot implements IPlot {
 			this._eleDestroy();
 			this._eleDestroy = null;
 		}
+	}
+	destroy() {
+		this.deactive();
+		this._entity && this.viewer.entities.remove(this._entity);
 	}
 }
