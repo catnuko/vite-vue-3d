@@ -286,19 +286,18 @@ export class LabelPlot implements IPlot {
 		panHandler.onclick((picked, lonlat, cartesian3) => {
 			if (picked?.id?._userData?.controlType === "control-pan" && !moving) {
 				panHandler.hanlder.setInputAction((movement) => {
-					popup?.hide();
 					let newPosition = this.viewer.scene.pickPosition(movement.endPosition);
 					if (newPosition) {
 						entity.position = newPosition;
 						panEntity.position = newPosition;
 						popup.position = newPosition;
+						rotateEntity.position = newPosition
 					}
 					moving = true;
 				}, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 			}
 			if (picked?.id?._userData?.controlType === "control-rotate" && !moving) {
 				panHandler.hanlder.setInputAction((movement) => {
-					popup?.hide();
 					let originPosition = Cesium.SceneTransforms.wgs84ToWindowCoordinates(
 						this.viewer.scene,
 						entity.position._value
@@ -318,7 +317,6 @@ export class LabelPlot implements IPlot {
 			if (moving) {
 				panHandler.hanlder.removeInputAction(Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 				moving = false;
-				popup?.show();
 			}
 		});
 		const rotateEntity = new Cesium.Entity({
@@ -416,5 +414,5 @@ export function angleByAtan(difX: number, difY: number) {
 		//第四象限
 		rotation = (Math.PI / 2) * 3 + Math.PI / 2 - Math.abs(rotation);
 	}
-	return rotation
+	return rotation;
 }
