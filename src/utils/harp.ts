@@ -2,7 +2,7 @@ import { MapView, MapViewEventNames } from "@here/harp-mapview";
 import { MapControls, MapControlsUI } from "@here/harp-map-controls";
 import { WebTileDataSource } from "@here/harp-webtile-datasource";
 import { WMTSProvider } from "../views/harpgl/custom/xyzProvider";
-import Cesium from "dtcesium";
+
 import { GeoCoordinatesLike } from "@here/harp-geoutils";
 export function createMapView(id: string, dataSource = true) {
 	const canvas = document.getElementById(id) as HTMLCanvasElement;

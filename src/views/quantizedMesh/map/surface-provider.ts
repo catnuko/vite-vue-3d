@@ -1,4 +1,4 @@
-import Cesium from "dtcesium";
+
 import decode from "@here/quantized-mesh-decoder";
 
 import dummyTileBuffer from "./dummy-tile";

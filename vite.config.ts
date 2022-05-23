@@ -6,6 +6,11 @@ import legacy from "@vitejs/plugin-legacy";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+	resolve: {
+		alias: {
+			"^dayjs$": "node_modules/dayjs/dayjs.min.js",
+		},
+	},
 	plugins: [
 		vue(),
 		Pages({
