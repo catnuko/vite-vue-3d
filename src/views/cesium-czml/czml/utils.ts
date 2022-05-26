@@ -289,6 +289,9 @@ export function _c(options) {
 	return { value: _value, valueType };
 }
 export type TimeRange = { start?: Dayjs; end?: Dayjs; duration?: duration.Duration };
+/**
+ * 给开始时间、结束时间、间隔其中的两个，补充另外一个。
+ */
 export function timeRange(options: TimeRange) {
 	let _start = options.start,
 		_end = options.end,
@@ -311,6 +314,9 @@ export function timeRange(options: TimeRange) {
 export function timeRangeToISOString(timeRange) {
 	return `${timeRange.start.toISOString()}/${timeRange.end.toISOString()}`;
 }
+/**
+ * 给开始时间和位置，结束时间和位置，图标和线路样式配置，生成一个Packet
+ */
 export async function makeRoutePacket(options: {
 	id: string;
 	start: { time: Dayjs; place?: string; position?: [number, number]; duration?: duration.Duration };
@@ -353,6 +359,9 @@ export async function makeRoutePacket(options: {
 			})
 		);
 }
+/**
+ * 给开始时间，结束时间，生成一个Clock
+ */
 export function makeClock(timeRangeOption: TimeRange) {
 	const tr = timeRange(timeRangeOption);
 	return new Cesium.Clock({

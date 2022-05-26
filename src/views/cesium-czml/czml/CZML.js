@@ -1,3 +1,4 @@
+import axios from "axios";
 import { Packet } from "./Packet";
 import { c, _c, getValueOfGraphic, toPromise } from "./utils";
 export class CZML {
@@ -31,8 +32,11 @@ export class CZML {
 		}
 		return this;
 	}
-	packet() {
+	packets() {
 		return this.czml.slice(1, this.czml.length);
+	}
+	getPacketById(id) {
+		return this.czml.find((x) => x.id === id)
 	}
 	clock(options) {
 		console.log(options);
@@ -83,4 +87,19 @@ export class CZML {
 CZML._id = 0;
 CZML.getId = function () {
 	return "czml_" + CZML._id;
+};
+/**
+ * czml可以是字符串、promise、和czml
+ */
+CZML.load = async function (czml) {
+	let rawCzml;
+	if (typeof czml === "string") {
+		const res = await axios.get(czml);
+		rawCzml = res.data;
+	} else if (czml instanceof Promise) {
+		rawCzml = await czml;
+	} else if (Array.isArray(czml)) {
+		rawCzml = czml;
+	}
+	return new CZML(rawCzml);
 };
