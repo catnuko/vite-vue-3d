@@ -1,4 +1,4 @@
-import Cesium from "dtcesium";
+
 import { cartesian32LonLat } from "ht-cesium-utils";
 export namespace Topology {
 	export function center(points: Cesium.Cartesian3[]) {

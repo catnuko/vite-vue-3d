@@ -1,5 +1,5 @@
 import { GeoBox } from "@here/harp-geoutils";
-import Cesium from "dtcesium";
+
 import { Tile } from "@here/harp-mapview/lib/Tile";
 import { cartographicInDegree } from "./harp";
 import * as THREE from "three";

@@ -1,4 +1,3 @@
-import Cesium from "dtcesium";
 import { addCartersian3Height, createScreenSpaceEventHandler, giveCartesian3Height } from "ht-cesium-utils";
 import { getDefer } from "../../utils/url";
 import { Popup } from "ht-popup/lib/index";
