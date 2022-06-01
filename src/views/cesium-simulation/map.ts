@@ -8,7 +8,7 @@ export  class MapShow{
         this.editor = new Editor(viewer)
         this.editor.setEnable(true)
         this.plot = new Plot(viewer)
-        this.plot.active("LabelPlot")
+        this.plot.active("LabelMaterialPlot")
     }
     destroy(){
         this.editor.destroy()
