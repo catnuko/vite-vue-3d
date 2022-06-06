@@ -1,5 +1,5 @@
 import { dayjs } from "./dayjs";
-import { c, _c, getValueOfGraphic} from "./utils"
+import { c, _c, getValueOfGraphic } from "./utils";
 //https://github.com/AnalyticalGraphicsInc/czml-writer/wiki/Packet
 export class Packet {
 	packet;
@@ -230,7 +230,10 @@ export class Packet {
 			return this;
 		}
 	}
-
+	cb(func) {
+		func(this);
+		return this
+	}
 	end() {
 		return this.packet;
 	}
