@@ -1,7 +1,8 @@
 import { debugPosition, cameraFlyTo, getDefer, cartesian32LonLat } from "ht-cesium-utils";
 import Box from "./Box";
 import * as RoutePlan from "./czml/routePlan";
-
+import * as Helper from "./helper";
+import CONFIG from "./config";
 export default class WorkFlow {
 	constructor(viewer, title, tk) {
 		this.viewer = viewer;
@@ -50,6 +51,7 @@ export default class WorkFlow {
 			this.accidentBox = null;
 		}
 	}
+	//流程1
 	setAccident(position, time, view) {
 		this.destroyAccidentBox();
 		this.saveAccidentData(position, time, view);
@@ -64,17 +66,36 @@ export default class WorkFlow {
 			this.manBox = null;
 		}
 	}
+	//流程2
 	async sendMan() {
 		this.destroyManBox();
-		this.manBox = new Box();
+		this.manBox = new Box(this.viewer);
 		// this._sendMan();
 		const start = this.accidentTime;
-		let end = Cesium.JulianDate.addSeconds(start, 10, new Cesium.JulianDate());
+		let end = Cesium.JulianDate.addSeconds(start, 60, new Cesium.JulianDate());
 		if (!this.startPosition) {
 			await this.initStartPosition();
 		}
-		let entity = this.manBox.add(createManByRoutePlan(start, end, this.startPosition, this.accodemtPosition, this.tk));
-		setTrackedEntity(this.viewer, entity, 5);
+		// let entity = this.manBox.add();
+		let { east, west, north, south } = Helper.fourPointByOne(this.accodemtPosition, CONFIG.SAFE_DISTANCE, Math.PI / 2);
+		const _sendMan = async (targetPosition) => {
+			const e = await Helper.createManByRoutePlan(start, end, this.startPosition, targetPosition, this.tk);
+			e.properties.addProperty("targetPosition", Cesium.ConstantPositionProperty(targetPosition));
+			this.manBox.add(e);
+		};
+		const cb1 = (clock) => {
+			if (Cesium.JulianDate.greaterThan(clock.currentTime, end)) {
+				this.manBox.list.forEach((entity) => {
+					entity.position = entity.properties["targetPosition"];
+				});
+				this.viewer.clock.onTick.removeEventListener(cb1);
+			}
+		};
+		this.viewer.clock.onTick.addEventListener(cb1);
+		_sendMan(east);
+		_sendMan(west);
+		_sendMan(north);
+		_sendMan(south);
 	}
 	_setAccident(position, time, view) {
 		throw new Error("重载错误");
@@ -88,76 +109,4 @@ export default class WorkFlow {
 	}
 	stop() {}
 	openVideo() {}
-}
-export function cameraAournd(viewer, position, startTime, duration, totalAngle = 360) {
-	const defer = getDefer();
-	let angle = totalAngle / duration;
-	let initialHeading = viewer.camera.heading;
-	// let startTime = viewer.clock.currentTime;
-	var Exection = function TimeExecution() {
-		// 当前已经过去的时间，单位s
-		var delTime = Cesium.JulianDate.secondsDifference(viewer.clock.currentTime, startTime);
-		let currentAngle = delTime * angle;
-		// 根据过去的时间，计算偏航角的变化
-		var heading = Cesium.Math.toRadians(currentAngle) + initialHeading;
-
-		viewer.camera.lookAt(position, new Cesium.HeadingPitchRange(heading, viewer.camera.pitch, 200));
-
-		if (currentAngle > totalAngle) {
-			viewer.clock.onTick.removeEventListener(Exection);
-			viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
-			defer.resolve();
-		}
-	};
-	viewer.clock.onTick.addEventListener(Exection);
-	return defer.promise;
-}
-export function setTrackedEntity(viewer, entity, seconds) {
-	viewer.trackedEntity = entity;
-	setTimeout(() => {
-		viewer.trackedEntity = undefined;
-	}, seconds * 1000);
-}
-export async function createManByRoutePlan(start, end, startPosition, endPosition, tk) {
-	let startP = cartesian32LonLat(startPosition);
-	let endP = cartesian32LonLat(endPosition);
-	const routes = await RoutePlan.getRouteFromLonlat([startP.lon, startP.lat], [endP.lon, endP.lat], tk);
-	const cartesian3List = routes[0].cartesian3List;
-	return createMan(start, end, cartesian3List);
-}
-export function createMan(start, end, cartesian3List) {
-	const position = new Cesium.SampledPositionProperty();
-	let secondStep = Cesium.JulianDate.secondsDifference(end, start) / cartesian3List.length;
-	cartesian3List.forEach((cartesian, index) => {
-		let curTime = Cesium.JulianDate.addSeconds(start, secondStep * index);
-		position.addSample(cartesian, curTime);
-	});
-	const modelLabel = new Cesium.Entity({
-		position: position,
-		orientation: new Cesium.VelocityOrientationProperty(position), // Automatically set the model's orientation to the direction it's facing.
-		label: {
-			text: "警察",
-			font: "20px sans-serif",
-			showBackground: true,
-			distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 100.0),
-			eyeOffset: new Cesium.Cartesian3(0, 7.2, 0),
-		},
-		model: {
-			uri: "./libs/Cesium/SampleData/models/CesiumMan/Cesium_Man.glb",
-			scale: 1,
-			heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-		},
-		path: {
-			leadTime: 2,
-			trailTime: 60,
-			width: 10,
-			resolution: 1,
-			material: new Cesium.PolylineGlowMaterialProperty({
-				glowPower: 0.3,
-				taperPower: 0.3,
-				color: Cesium.Color.PALEGOLDENROD,
-			}),
-		},
-	});
-	return modelLabel;
 }

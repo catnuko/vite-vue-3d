@@ -3187,21 +3187,21 @@ has@^1.0.3:
   dependencies:
     function-bind "^1.1.1"
 
-ht-cesium-utils@^1.0.11:
-  version "1.0.11"
-  resolved "http://150.158.103.75:4873/ht-cesium-utils/-/ht-cesium-utils-1.0.11.tgz#72f71cd800a0144bd25f7f85a756dae59472b16b"
-  integrity sha512-7GwiWmCXBZqGcTDTYSkL1CBliXi70HfgxpE0mJZf0LvnHC/P8XVJZb+hgHSyzZ8tmdlCUaVjBpOZ/EiQwMzNtQ==
+ht-cesium-utils@^1.0.12:
+  version "1.0.12"
+  resolved "http://150.158.103.75:4873/ht-cesium-utils/-/ht-cesium-utils-1.0.12.tgz#2b40dcfc38556a8b936f4cd0b83de64199334ae7"
+  integrity sha512-2xj5Ktq6j0emw2Ml9dNVZt9Nu0S8BPv6z+NL3h4ujQnuebxG2zWpLhHYL0Qg2kCmaYMRoCG5CYbJu+vC5jne/A==
   dependencies:
     d3-color "^3.0.1"
 
-ht-components@^1.0.13:
-  version "1.0.13"
-  resolved "http://150.158.103.75:4873/ht-components/-/ht-components-1.0.13.tgz#9009b517cef5eed73f58e72ee1f0c826751e1b2a"
-  integrity sha512-L/mNFqIinCrIfBgWKlJOgUiLQIzPJ9rKEaLEk38kTm7ohyyZQIhqBgrXLRKqzkTEKgqbKYT52/peCoyQGfeGzg==
+ht-components@^1.0.14:
+  version "1.0.14"
+  resolved "http://150.158.103.75:4873/ht-components/-/ht-components-1.0.14.tgz#493298f3c3e88fa1f35ddfb4cb665b219fdc81ac"
+  integrity sha512-JZ2uYPq0Fh4C645KrI5CnLD4RCASU+M1mj5INWiRlZyStUjdF64G0P2mJ9E0NfYbZw1URExYR0vbqYBNrLjPHQ==
   dependencies:
     "@element-plus/icons-vue" "^1.1.1"
     element-plus "^2.1.1"
-    ht-cesium-utils "^1.0.11"
+    ht-cesium-utils "^1.0.12"
     screenfull "^6.0.1"
 
 ht-eventclass@^1.0.1:

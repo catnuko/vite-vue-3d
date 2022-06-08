@@ -1,5 +1,8 @@
 import WorkFlow from "./WorkFlow";
-
+import * as Helper from "./helper";
+import CONFIG from "./config";
+import { lineString, length } from "@turf/turf";
+import { cartesian32LonLat } from "ht-cesium-utils";
 export default class FireWorkFlow extends WorkFlow {
 	constructor(viewer, title, tk) {
 		super(viewer, title, tk);
@@ -23,7 +26,28 @@ export default class FireWorkFlow extends WorkFlow {
 			modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(position),
 		});
 		this.accidentBox.add(accidentPrimitive);
+		let entity = wallAroundPoint(position, CONFIG.WALL_DISTANCE);
+		this.viewer.entities.add(entity);
+		// this.accidentBox.add();
 	}
-	_sendMan() {
-    }
+	_sendMan() {}
+}
+function wallAroundPoint(position, distance, rotation = 0) {
+	let { east, west, north, south } = Helper.fourPointByOne(position, distance, rotation);
+	let positions = [east, north, west, north];
+	let HEIGHT = 20;
+	let IMAGE_WIDTH = 991;
+	let IMAGE_HEIGTH = 394;
+	const repeatX = Helper.computeRepeatX(HEIGHT, IMAGE_WIDTH, IMAGE_HEIGTH);
+	return new Cesium.Entity({
+		wall: {
+			positions: positions,
+			material: new Cesium.ImageMaterialProperty({
+				image: new URL("../cesium/jiaotongguanzhi1.png", import.meta.url).href,
+				repeat: new Cesium.Cartesian2(repeatX, 1),
+				transparent: true,
+			}),
+		},
+		properties: {},
+	});
 }

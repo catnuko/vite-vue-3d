@@ -13,9 +13,14 @@ onBeforeUnmount(() => {
 	mapshow.destroy();
 	mapshow = null;
 });
+const createViewerOption = {
+	timeline: true,
+	animation: true,
+	shouldAnimate: true,
+};
 </script>
 <template>
-	<HtGlobe :tiandituTk="tiandituTk" @loaded="onLoaded">
+	<HtGlobe :tiandituTk="tiandituTk" @loaded="onLoaded" :createViewerOption="createViewerOption">
 		<Duty></Duty>
 	</HtGlobe>
 </template>

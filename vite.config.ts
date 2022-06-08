@@ -27,6 +27,7 @@ export default defineConfig({
 		assetsDir: "assets",
 	},
 	server: {
+		hmr:true,
 		proxy: {
 			"/3Dtile": {
 				target: "http://localhost:8002",
