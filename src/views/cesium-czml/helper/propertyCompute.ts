@@ -1,5 +1,9 @@
-import { debugPosition, cameraFlyTo, getDefer, cartesian32LonLat } from "ht-cesium-utils";
-import * as RoutePlan from "./czml/routePlan";
+import { debugPosition, cameraFlyTo, getDefer, cartesian32LonLat, giveCartesian3Height } from "ht-cesium-utils";
+import * as RoutePlan from "../czml/routePlan";
+import { lineString, length } from "@turf/turf";
+import CONFIG from "../config";
+import * as EntityOp from "./entityOperation";
+import * as EntityMa from "./entityMake";
 
 export function cameraAournd(viewer, position, startTime, duration, totalAngle = 360) {
 	const defer = getDefer();
@@ -30,47 +34,7 @@ export function setTrackedEntity(viewer, entity, seconds) {
 		viewer.trackedEntity = undefined;
 	}, seconds * 1000);
 }
-export async function createManByRoutePlan(start, end, startPosition, endPosition, tk) {
-	let startP = cartesian32LonLat(startPosition);
-	let endP = cartesian32LonLat(endPosition);
-	const routes = await RoutePlan.getRouteFromLonlat([startP.lon, startP.lat], [endP.lon, endP.lat], tk);
-	const cartesian3List = routes[0].cartesian3List;
-	return createMan(start, end, cartesian3List);
-}
 
-export function createMan(start, end, cartesian3List) {
-	let position = positionsWithConstVelocity(start, end, cartesian3List);
-	const modelLabel = new Cesium.Entity({
-		position: position,
-		orientation: new Cesium.VelocityVectorProperty(position), // Automatically set the model's orientation to the direction it's facing.
-		label: {
-			text: "警察",
-			font: "20px sans-serif",
-			showBackground: true,
-			// distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0.0, 100.0),
-			eyeOffset: new Cesium.Cartesian3(0, 7.2, 0),
-		},
-		model: {
-			uri: "./libs/Cesium/SampleData/models/CesiumMan/Cesium_Man.glb",
-			scale: 4,
-			heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-		},
-		path: {
-			leadTime: 2,
-			trailTime: 60,
-			width: 10,
-			resolution: 1,
-			material: new Cesium.PolylineGlowMaterialProperty({
-				glowPower: 0.3,
-				taperPower: 0.3,
-				color: Cesium.Color.RED,
-			}),
-		},
-		properties: {},
-	});
-	return modelLabel;
-}
-export function createModel() {}
 export function lerp(min, max, t) {
 	return (1 - t) * min + t * max;
 }
@@ -102,9 +66,6 @@ export function fourPointByOne(position, distance, rotation = 0) {
 		const m4 = Cesium.Matrix4.fromRotationTranslation(Cesium.Matrix3.fromQuaternion(q));
 		const p = Cesium.Matrix4.multiplyByPoint(m4, translatePoint, new Cesium.Cartesian3());
 		Cesium.Cartesian3.add(position, p, translatePoint);
-
-		//不旋转
-		Cesium.Cartesian3.add(position, translatePoint, translatePoint);
 	};
 	change(east);
 	change(west);
@@ -115,7 +76,7 @@ export function fourPointByOne(position, distance, rotation = 0) {
 /**
  * 墙贴图时，墙长不同，采用同样的repeat值会导致图片变形，这里根据墙长计算X方向上重复的值。
  */
-export function computeRepeatX(wallHeigth, imageWidth, imageHeight) {
+export function computeRepeatX(positions, wallHeigth, imageWidth, imageHeight) {
 	let lineLength = length(
 		lineString(
 			positions.map((x) => {
@@ -132,9 +93,32 @@ export function computeRepeatX(wallHeigth, imageWidth, imageHeight) {
 	return repeatX;
 }
 /**
+ * 给出两或多点，计算移动路径
+ */
+export function positionWithConstVelocity(start, end, cartesian3List) {
+	if (cartesian3List.length === 2) {
+		return positionWithConstVelocityFromTwoPoint(start, end, cartesian3List[0], cartesian3List[1]);
+	} else {
+		return positionsWithConstVelocityFromCartesian3List(start, end, cartesian3List);
+	}
+}
+function positionWithConstVelocityFromTwoPoint(start, end, startPosition, endPosition, numberOfSamples = 10) {
+	const totalSeconds = Cesium.JulianDate.secondsDifference(end, start);
+	// Create a path for our model by lerping between two positions.
+	const position = new Cesium.SampledPositionProperty();
+	for (let i = 0; i <= numberOfSamples; ++i) {
+		const factor = i / numberOfSamples;
+		const time = Cesium.JulianDate.addSeconds(start, factor * totalSeconds, new Cesium.JulianDate());
+		const location = Cesium.Cartesian3.lerp(startPosition, endPosition, factor, new Cesium.Cartesian3());
+		position.addSample(time, location);
+	}
+	return position;
+}
+
+/**
  * 给出起止时间和路径，计算一个使物体匀速运动的positionProperty
  */
-export function positionsWithConstVelocity(start, end, cartesian3List) {
+function positionsWithConstVelocityFromCartesian3List(start, end, cartesian3List) {
 	const position = new Cesium.SampledPositionProperty();
 	const totalSeconds = Cesium.JulianDate.secondsDifference(end, start);
 
@@ -156,4 +140,37 @@ export function positionsWithConstVelocity(start, end, cartesian3List) {
 		position.addSample(curTime, cartesian);
 	});
 	return position;
+}
+/**
+ * A面朝B时的orientation
+ */
+export function getOrientationOfA(pointA, pointB) {
+	//向量AB
+	const vector2 = Cesium.Cartesian3.subtract(pointB, pointA, new Cesium.Cartesian3());
+	//归一化
+	const normal = Cesium.Cartesian3.normalize(vector2, new Cesium.Cartesian3());
+	//旋转矩阵 rotationMatrixFromPositionVelocity源码中有，并未出现在cesiumAPI中
+	const rotationMatrix3 = Cesium.Transforms.rotationMatrixFromPositionVelocity(pointA, normal, Cesium.Ellipsoid.WGS84);
+	const orientation = Cesium.Quaternion.fromRotationMatrix(rotationMatrix3);
+	return orientation;
+}
+export async function positionFromRoutePlan(startPosition, endPosition, tk) {
+	let startP = cartesian32LonLat(startPosition);
+	let endP = cartesian32LonLat(endPosition);
+	const routes = await RoutePlan.getRouteFromLonlat([startP.lon, startP.lat], [endP.lon, endP.lat], tk);
+	const cartesian3List = routes[0].cartesian3List;
+	return cartesian3List;
+}
+export function emitterModelMatrixOfWater(emitterPositition, firePosition) {
+	let temp = cartesian32LonLat(firePosition);
+	temp.height *= 2;
+	temp = Cesium.Cartesian3.fromDegrees(temp.lon, temp.lat, temp.height);
+	let normal = Cesium.Cartesian3.subtract(temp, emitterPositition, new Cesium.Cartesian3());
+	Cesium.Cartesian3.normalize(normal, normal);
+	let axis = new Cesium.Cartesian3();
+	Cesium.Cartesian3.cross(normal, Cesium.Cartesian3.UNIT_Z, axis);
+	return Cesium.Matrix4.fromRotationTranslation(
+		Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.fromAxisAngle(axis, Math.PI / 4))
+	);
+	// return Cesium.Matrix4.fromRotationTranslation(Cesium.Matrix3.fromRotationX(Math.PI / 4, new Cesium.Matrix3()));
 }
