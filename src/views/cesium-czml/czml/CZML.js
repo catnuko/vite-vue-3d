@@ -23,6 +23,7 @@ export class CZML {
 		}
 		this.dataSource = new Cesium.CzmlDataSource(name);
 		this.viewer.dataSources.add(this.dataSource);
+		console.log(this.czml);
 		this.dataSource.load(this.czml);
 		return this;
 	}
@@ -36,7 +37,7 @@ export class CZML {
 		return this.czml.slice(1, this.czml.length);
 	}
 	getPacketById(id) {
-		return this.czml.find((x) => x.id === id)
+		return this.czml.find((x) => x.id === id);
 	}
 	clock(options) {
 		console.log(options);

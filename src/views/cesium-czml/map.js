@@ -29,7 +29,8 @@ export class MapShow {
 				position: new Cesium.Cartesian3(-2746941.103456469, 4763779.777781569, 3220882.9237362673),
 				hpr: new Cesium.HeadingPitchRoll(0.0873333136501282, -0.7927246054726362, 6.28318503262281),
 			});
-			workFlow.sendMan();
+			// workFlow.sendMan();
+			workFlow.sendManCzml();
 
 			this.workFlowList.push(workFlow);
 			mitter.emit(EVENT.PANEL_SHOW_ADD_WORKFLOW, {

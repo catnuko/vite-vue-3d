@@ -1,6 +1,7 @@
 import { debugPosition, cameraFlyTo, getDefer, cartesian32LonLat, giveCartesian3Height } from "ht-cesium-utils";
 import * as RoutePlan from "../czml/routePlan";
 import { lineString, length } from "@turf/turf";
+import { v4 as uuidv4 } from "uuid";
 import CONFIG from "../config";
 import * as EntityOp from "./entityOperation";
 import * as EntityMa from "./entityMake";
@@ -134,7 +135,6 @@ function positionsWithConstVelocityFromCartesian3List(start, end, cartesian3List
 	//将时间平均分配到各个点上，使得物体能匀速运动
 	cartesian3List.forEach((cartesian, index) => {
 		let factor = distanceList[index] / totalDistance;
-		// factor = Math.pow(factor, 2);
 		let addSeconds = lerp(0, totalSeconds, factor);
 		let curTime = Cesium.JulianDate.addSeconds(start, addSeconds, new Cesium.JulianDate());
 		position.addSample(curTime, cartesian);
@@ -161,16 +161,77 @@ export async function positionFromRoutePlan(startPosition, endPosition, tk) {
 	const cartesian3List = routes[0].cartesian3List;
 	return cartesian3List;
 }
+/**
+ * 给出发射器的位置和目的地的位置，计算发射器旋转的角度，也就是模型矩阵
+ */
 export function emitterModelMatrixOfWater(emitterPositition, firePosition) {
-	let temp = cartesian32LonLat(firePosition);
-	temp.height *= 2;
-	temp = Cesium.Cartesian3.fromDegrees(temp.lon, temp.lat, temp.height);
-	let normal = Cesium.Cartesian3.subtract(temp, emitterPositition, new Cesium.Cartesian3());
-	Cesium.Cartesian3.normalize(normal, normal);
+	const ROTATION = Math.PI / 4;
+	let normal = Cesium.Cartesian3.subtract(firePosition, emitterPositition, new Cesium.Cartesian3());
+	let transform = Cesium.Transforms.eastNorthUpToFixedFrame(emitterPositition);
+	transform = Cesium.Matrix4.inverse(transform, new Cesium.Matrix4());
+	normal = Cesium.Matrix4.multiplyByPointAsVector(transform, normal, new Cesium.Cartesian3());
 	let axis = new Cesium.Cartesian3();
-	Cesium.Cartesian3.cross(normal, Cesium.Cartesian3.UNIT_Z, axis);
+	Cesium.Cartesian3.cross(Cesium.Cartesian3.UNIT_Z, normal, axis);
 	return Cesium.Matrix4.fromRotationTranslation(
-		Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.fromAxisAngle(axis, Math.PI / 4))
+		Cesium.Matrix3.fromQuaternion(
+			Cesium.Quaternion.fromAxisAngle(Cesium.Cartesian3.normalize(axis, new Cesium.Cartesian3()), ROTATION)
+		)
 	);
-	// return Cesium.Matrix4.fromRotationTranslation(Cesium.Matrix3.fromRotationX(Math.PI / 4, new Cesium.Matrix3()));
+}
+export function czmlPositionWithConstVelocity(start, end, cartesian3List) {
+	let property = positionWithConstVelocity(start, end, cartesian3List);
+	return czmlPotitionProperty(property);
+}
+export function czmlPotitionProperty(property) {
+	let cartesian = [];
+	const values = property._property._values;
+	const times = property._property._times;
+	const packedLength = property._property._packedLength;
+	times.forEach((time, index) => {
+		let startIndex = index * packedLength;
+		let endIndex = startIndex + packedLength;
+		let curPosition = values.slice(startIndex, endIndex);
+		cartesian.push(Cesium.JulianDate.toIso8601(time), curPosition[0], curPosition[1], curPosition[2]);
+	});
+	return cartesian;
+}
+export function czmlAvailability(start, end) {
+	return Cesium.JulianDate.toIso8601(start) + "/" + Cesium.JulianDate.toIso8601(end);
+}
+export function czmlToEpoch(list, elementLength) {
+	let epoch = list[0];
+	for (let i = 0; i < list.length; i += elementLength) {
+		if (i === 0) {
+			list.splice([i], 1, 0);
+		} else {
+			let seconds = Cesium.JulianDate.secondsDifference(
+				Cesium.JulianDate.fromIso8601(list[i]),
+				Cesium.JulianDate.fromIso8601(epoch)
+			);
+			list.splice([i], 1, seconds);
+		}
+	}
+	return {
+		epoch,
+		list,
+	};
+}
+export function czmlReferenceCompositeValue(czml, propertyName, value) {
+	const id = uuidv4();
+	czml.push({
+		id: id,
+		[propertyName]: value,
+	});
+	return id + "#" + propertyName;
+}
+export function incrementJulianDateList(start, secondList) {
+	let list = [];
+	let lastTime = start;
+	secondList.map((seconds) => {
+		let curTime = new Cesium.JulianDate();
+		Cesium.JulianDate.addSeconds(lastTime, seconds, curTime);
+		list.push(curTime);
+		lastTime = curTime;
+	});
+	return list;
 }
