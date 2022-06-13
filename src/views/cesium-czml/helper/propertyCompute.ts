@@ -74,6 +74,7 @@ export function fourPointByOne(position, distance, rotation = 0) {
 	change(south);
 	return { east, west, north, south };
 }
+
 /**
  * 墙贴图时，墙长不同，采用同样的repeat值会导致图片变形，这里根据墙长计算X方向上重复的值。
  */
@@ -178,6 +179,11 @@ export function emitterModelMatrixOfWater(emitterPositition, firePosition) {
 		)
 	);
 }
+/**
+ * 开始时间，结束时间，[cartesian3]
+ *
+ * 返回：[time,x,y,z,time,x,y,z]
+ */
 export function czmlPositionWithConstVelocity(start, end, cartesian3List) {
 	let property = positionWithConstVelocity(start, end, cartesian3List);
 	return czmlPotitionProperty(property);
@@ -216,14 +222,17 @@ export function czmlToEpoch(list, elementLength) {
 		list,
 	};
 }
-export function czmlReferenceCompositeValue(czml, propertyName, value) {
-	const id = uuidv4();
-	czml.push({
-		id: id,
-		[propertyName]: value,
-	});
-	return id + "#" + propertyName;
-}
+// export function czmlReferenceCompositeValue(czml, propertyName, value) {
+// 	const id = uuidv4();
+// 	czml.push({
+// 		id: id,
+// 		[propertyName]: value,
+// 	});
+// 	return id + "#" + propertyName;
+// }
+/**
+ * 开始时间，间隔秒数列表，计算每个间隔的时间。
+ */
 export function incrementJulianDateList(start, secondList) {
 	let list = [];
 	let lastTime = start;
@@ -234,4 +243,95 @@ export function incrementJulianDateList(start, secondList) {
 		lastTime = curTime;
 	});
 	return list;
+}
+/**
+ * 计算随时间变化的X重复值,起点：不动的点，重点：随时间变化的点，墙高，材质宽，材质高，Y方向的重复值
+ */
+export function czmlComputeRepeatX(startPosition, cartesian3List, wallHeigth, imageWidth, imageHeight, repeatY = 1) {
+	let res = [];
+	for (let i = 0; i < cartesian3List.length; i += 4) {
+		let time = cartesian3List[i + 0];
+		let endPosition = new Cesium.Cartesian3(cartesian3List[i + 1], cartesian3List[i + 2], cartesian3List[i + 3]);
+		let X = computeRepeatX([startPosition, endPosition], wallHeigth, imageWidth, imageHeight);
+		res.push(time, X, repeatY);
+	}
+	return res;
+}
+/**
+ * curPosition->faceToPosition方向上距curPosition 0.1米的位置
+ * @param curPosition 当前位置
+ * @param faceToPosition 面向的位置
+ * @returns 真正面向的位置
+ */
+export function computeFaceToPosition(curPosition, faceToPosition) {
+	let realFaceToPosition = new Cesium.Cartesian3();
+	let length = Cesium.Cartesian3.distance(curPosition, faceToPosition);
+	Cesium.Cartesian3.lerp(curPosition, faceToPosition, 0.1 / length, realFaceToPosition);
+	return realFaceToPosition;
+}
+/**
+ *
+ * @param start 开始时间
+ * @param end 结束时间
+ * @param position 当前位置
+ * @param faceToPosition 面朝的位置，可以是很远的位置
+ * @returns 两个时间节点，控制模型的位置（位置持续到end）和朝向
+ */
+export function czmlStandAt(start, end, position, faceToPosition) {
+	let realFaceToPosition = computeFaceToPosition(position, faceToPosition);
+	return [
+		[Cesium.JulianDate.toIso8601(start), position.x, position.y, position.z],
+		[Cesium.JulianDate.toIso8601(end), realFaceToPosition.x, realFaceToPosition.y, realFaceToPosition.z],
+	];
+}
+/**
+ * 如果target(也就是FirstOBJ[key])存在，
+ * 且是对象的话再去调用deepObjectMerge，
+ * 否则就是FirstOBJ[key]里面没这个对象，需要与SecondOBJ[key]合并
+ */
+export function deepObjectMerge(FirstOBJ, SecondOBJ) {
+	// 深度合并对象
+	for (var key in SecondOBJ) {
+		FirstOBJ[key] =
+			FirstOBJ[key] && FirstOBJ[key].toString() === "[object Object]"
+				? deepObjectMerge(FirstOBJ[key], SecondOBJ[key])
+				: (FirstOBJ[key] = SecondOBJ[key]);
+	}
+	return FirstOBJ;
+}
+/**
+ * czml中需要添加并引用某个属性时使用
+ * @param czml
+ * @param propertyPath billboard.image
+ * @param value billboard.image的值
+ * @param packetId 可传可不传
+ * @returns 对属性的引用
+ */
+export function czmlReferenceCompositeValue(czml, propertyPath, value, packetId = uuidv4()) {
+	let curPacket = czml.find((x) => x.id === packetId);
+	if (!curPacket) {
+		curPacket = {
+			id: packetId,
+		};
+		czml.push(curPacket);
+	}
+	const getProperty = (obj, propertyName) => {
+		let property = obj[propertyName];
+		if (!property) {
+			property = {};
+			obj[propertyName] = property;
+		}
+		return property;
+	};
+	let pathList = propertyPath.split(".");
+	let fakeCurPacket = {};
+	let lastProperty = fakeCurPacket;
+	pathList.slice(0, pathList.length - 1).forEach((path) => {
+		let newProperty = getProperty(lastProperty, path);
+		lastProperty = newProperty;
+	});
+	lastProperty[pathList[pathList.length - 1]] = value;
+	// curPacket = Object.assign(curPacket,fakeCurPacket);
+	curPacket = deepObjectMerge(curPacket, fakeCurPacket);
+	return packetId + "#" + propertyPath;
 }

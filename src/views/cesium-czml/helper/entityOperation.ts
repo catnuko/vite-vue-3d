@@ -12,33 +12,38 @@ export async function moveMan(viewer, entity, start, end, cartesian3List) {
 	entity.position = position;
 	entity.orientation = new Cesium.VelocityOrientationProperty(position);
 	entity.model.runAnimations = true;
-	await clock(viewer, start, end);
+	await clock(viewer, end);
 	entity.position = targetPosition;
 	entity.model.runAnimations = false;
 }
-export function clock(viewer, start, end) {
+export function clock(clockOwner, time) {
 	let defer = getDefer();
-	let clock = new Cesium.Clock({
-		startTime: start,
-		stopTime: end,
-		currentTime: start,
-		multiplier: 1,
-		shouldAnimate: true,
-		clockRange: Cesium.ClockRange.CLAMPED,
-	});
 	const cb = () => {
-		if (Cesium.JulianDate.greaterThanOrEquals(clock.currentTime, end)) {
+		if (Cesium.JulianDate.greaterThanOrEquals(clockOwner.clock.currentTime, time)) {
 			defer.resolve();
-			clock.onTick.removeEventListener(cb);
-			clock = null;
-			viewer.clock.onTick.removeEventListener(cb2);
+			clockOwner.clock.onTick.removeEventListener(cb);
 		}
 	};
-	clock.onTick.addEventListener(cb);
-	const cb2 = () => {
-		clock.multiplier = viewer.clock.multiplier;
-		clock.tick();
-	};
-	viewer.clock.onTick.addEventListener(cb2);
+	clockOwner.clock.onTick.addEventListener(cb);
 	return defer.promise;
+}
+// let viewer:Cesium.Viewer
+export function setTimeCallBack(clockOwner, callbackList) {
+	let called = [];
+	const cb = (clock) => {
+		const currentTime = clock.currentTime
+		callbackList.forEach((callbackOption) => {
+			if (
+				!called.find((t) => Cesium.JulianDate.equals(t, callbackOption.time)) &&
+				Cesium.JulianDate.equalsEpsilon(currentTime, callbackOption.time, 1)
+			) {
+				callbackOption.handler(currentTime);
+				called.push(currentTime);
+			}
+			if (called.length === callbackList.length) {
+				clockOwner.clock.onTick.removeEventListener(cb);
+			}
+		});
+	};
+	clockOwner.clock.onTick.addEventListener(cb);
 }

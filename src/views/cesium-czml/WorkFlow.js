@@ -69,226 +69,182 @@ export default class WorkFlow {
 			this.manBox = null;
 		}
 	}
-	//流程2
-	async sendMan() {
-		this.destroyManBox();
-		this.manBox = new Box(this.viewer);
-		// this._sendMan();
-		const start = this.accidentTime;
-		let end = Cesium.JulianDate.addSeconds(start, 60, new Cesium.JulianDate());
-		let createWallEnd = Cesium.JulianDate.addSeconds(end, 10, new Cesium.JulianDate());
-		if (!this.startPosition) {
-			await this.initStartPosition();
-		}
-		// let entity = this.manBox.add();
-		let wallPositions = Helper.PropertyCo.fourPointByOne(this.accodemtPosition, CONFIG.WALL_DISTANCE);
-		wallPositions = [wallPositions.east, wallPositions.north, wallPositions.west, wallPositions.south];
-		let manPositions = Helper.PropertyCo.fourPointByOne(this.accodemtPosition, CONFIG.MAN_DISTANCE, Math.PI / 4);
-		manPositions = [manPositions.east, manPositions.north, manPositions.west, manPositions.south];
-		let tempBox = new Box(this.viewer);
-		let pl = wallPositions.map(async (position, index) => {
-			//人从警局到火灾现场
-			const cartesian3List = await Helper.PropertyCo.positionFromRoutePlan(this.startPosition, position, this.tk);
-			const manEntity = Helper.EntityMa.createMan();
-			let nextTargetPosition;
-			if (index === wallPositions.length - 1) {
-				nextTargetPosition = wallPositions[0];
-			} else {
-				nextTargetPosition = wallPositions[index + 1];
-			}
-			manEntity._targetPosition = position;
-			manEntity._nextTargetPosition = nextTargetPosition;
-			manEntity._manPosition = manPositions[index];
-
-			this.manBox.add(manEntity);
-			await Helper.EntityOp.moveMan(this.viewer, manEntity, start, end, cartesian3List);
-			Helper.EntityOp.faceTo(manEntity, this.accodemtPosition);
-			this.mitter.emit(EVENT.FIRE_MAN_ARRIVED, { workFlow: this });
-			//四面墙合成一个
-			let newWall = Helper.EntityMa.createWallAroundPointDynamicly(
-				end,
-				createWallEnd,
-				manEntity._targetPosition,
-				manEntity._nextTargetPosition
-			);
-			tempBox.add(newWall);
-			//四面墙合成一个人跟随
-			await Helper.EntityOp.moveMan(this.viewer, manEntity, end, createWallEnd, [
-				manEntity._targetPosition,
-				manEntity._nextTargetPosition,
-			]);
-			this.mitter.emit(EVENT.FIRE_WALL_CREATED, { workFlow: this });
-			return;
-		});
-		await Promise.all(pl);
-		tempBox.destroy();
-		tempBox = null;
-		//创建墙
-		this.accidentBox.add(Helper.EntityMa.wallAroundPoint(this.accodemtPosition, CONFIG.WALL_DISTANCE));
-		//人回到灭火位置
-		this.manBox.list.forEach(async (manEntity) => {
-			await Helper.EntityOp.moveMan(
-				this.viewer,
-				manEntity,
-				createWallEnd,
-				Cesium.JulianDate.addSeconds(createWallEnd, 5, new Cesium.JulianDate()),
-				[manEntity._nextTargetPosition, manEntity._manPosition]
-			);
-			Helper.EntityOp.faceTo(manEntity, this.accodemtPosition);
-			let emitterPosition = giveCartesian3Height(manEntity._manPosition, CONFIG.WALL_HEIGTH);
-			this.accidentBox.add(Helper.EntityMa.createWater(emitterPosition, this.accodemtPosition));
-		});
-
-		this.viewer.flyTo(this.accidentBox.list);
-	}
-	async sendManCzml() {
-		let czml = [
+	async beforeCzml(czml) {
+		this.czml = [
 			{
 				id: "document",
 				version: "1.0",
 			},
 		];
-		const dataSource = new Cesium.CzmlDataSource("test");
-		this.viewer.dataSources.add(dataSource);
-		const start = this.accidentTime;
-		const [end, createWallEnd, manPositionEnd] = Helper.PropertyCo.incrementJulianDateList(start, [60, 10, 5]);
-		const finalEnd = Cesium.JulianDate.addMinutes(start, 60, new Cesium.JulianDate());
+		this.czmlBox = new Box(this.viewer);
+		this.czmlDataSource = new Cesium.CzmlDataSource("test");
+		this.viewer.dataSources.add(this.czmlDataSource);
+		//初始化时间
+		const startAccident = this.accidentTime;
+		const [startSendMan, currentTime, endSendMan, endCreateWall, endToManPosition] = Helper.incrementJulianDateList(
+			startAccident,
+			[5, 58, 2, 5, 2]
+		);
+		const finalEnd = Cesium.JulianDate.addMinutes(startAccident, 60, new Cesium.JulianDate());
+		this.timeNode = {
+			startAccident,
+			startSendMan,
+			currentTime,
+			endSendMan,
+			endCreateWall,
+			endToManPosition,
+			finalEnd,
+		};
+		this.viewer.timeline.zoomTo(startAccident, finalEnd);
+		this.czml[0].clock = {
+			//TODO 测试,当前时间
+			currentTime: Cesium.JulianDate.toIso8601(currentTime),
+			interval: Helper.czmlAvailability(startSendMan, finalEnd),
+			multiplier: 1,
+		};
+
 		if (!this.startPosition) {
 			await this.initStartPosition();
 		}
-		czml[0].clock = {
-			currentTime: Cesium.JulianDate.toIso8601(start),
-			interval: Helper.PropertyCo.czmlAvailability(start, finalEnd),
-			multiplier: 1,
-		};
-		// let entity = this.manBox.add();
-		let wallPositions = Helper.PropertyCo.fourPointByOne(this.accodemtPosition, CONFIG.WALL_DISTANCE);
+		//初始化视角
+		this.viewDestroyHandle = Helper.setTimeViewList(this.viewer, [
+			{
+				start: startAccident,
+				stop: startSendMan,
+				data: {
+					destination: [-2746801.160400554, 4763651.357878603, 3220910.967226206],
+					hpr: [0.2741199786935695, -0.4688640631721803, 6.283182631305866],
+				},
+			},
+		]);
+	}
+	destroyCzml() {
+		this.viewDestroyHandle && this.viewDestroyHandle();
+	}
+	async sendManCzml() {
+		const self = this;
+		await this.beforeCzml();
+		const { czml } = this;
+		const { startAccident, startSendMan, currentTime, endSendMan, endCreateWall, endToManPosition, finalEnd } =
+			this.timeNode;
+
+		let wallPositions = Helper.fourPointByOne(this.accodemtPosition, CONFIG.WALL_DISTANCE);
 		wallPositions = [wallPositions.east, wallPositions.north, wallPositions.west, wallPositions.south].map((i) =>
 			giveCartesian3Height(i, CONFIG.WALL_HEIGTH)
 		);
-		let manPositions = Helper.PropertyCo.fourPointByOne(this.accodemtPosition, CONFIG.MAN_DISTANCE, Math.PI / 4);
+		let manPositions = Helper.fourPointByOne(this.accodemtPosition, CONFIG.MAN_DISTANCE, Math.PI / 4);
 		manPositions = [manPositions.east, manPositions.north, manPositions.west, manPositions.south];
-		let tempBox = new Box(this.viewer);
-		let realWallPositions = [...wallPositions, wallPositions[0]];
-		czml.push({
-			id: "wall",
-			availability: Helper.PropertyCo.czmlAvailability(createWallEnd, finalEnd),
-			wall: {
-				positions: {
-					cartesian: realWallPositions.map((i) => [i.x, i.y, i.z]).flat(),
-				},
-				material: {
-					image: {
-						image: new URL("../cesium/jiaotongguanzhi1.png", import.meta.url).href,
-						repeat: {
-							cartesian2: [
-								Helper.PropertyCo.computeRepeatX(
-									realWallPositions,
-									CONFIG.WALL_HEIGTH,
-									CONFIG.IMAGE_WIDTH,
-									CONFIG.IMAGE_HEIGTH
-								),
-								1,
-							],
-						},
-						transparent: true,
-					},
-				},
-			},
-		});
-		let pl = wallPositions.map(async (position, index) => {
-			const cartesian3List = await Helper.PropertyCo.positionFromRoutePlan(this.startPosition, position, this.tk);
-			let nextTargetPosition;
-			if (index === wallPositions.length - 1) {
-				nextTargetPosition = wallPositions[0];
-			} else {
-				nextTargetPosition = wallPositions[index + 1];
-			}
-			const _targetPosition = position;
-			const _nextTargetPosition = nextTargetPosition;
-			const _manPosition = manPositions[index];
-			let start_end = Helper.PropertyCo.czmlPositionWithConstVelocity(start, end, cartesian3List);
-			let end_createWallEnd = Helper.PropertyCo.czmlPositionWithConstVelocity(end, createWallEnd, [
-				_targetPosition,
-				_nextTargetPosition,
-			]);
-			let createWall_manPosition = Helper.PropertyCo.czmlPositionWithConstVelocity(createWallEnd, manPositionEnd, [
-				_nextTargetPosition,
-				_manPosition,
-			]);
-			const packet = {
-				id: "man-" + (index + 1),
-				availability: Helper.PropertyCo.czmlAvailability(start, finalEnd),
-				position: {
-					cartesian: [start_end, end_createWallEnd, createWall_manPosition].flat(),
-				},
-				orientation: {
-					velocityReference: "#position",
-				},
-				label: {
-					text: "警察",
-					font: "20px sans-serif",
-					showBackground: true,
-					eyeOffset: {
-						cartesian: [0, 7.2, 0],
-					},
-				},
-				model: {
-					gltf: "./libs/Cesium/SampleData/models/CesiumMan/Cesium_Man.glb",
-					scale: 4,
-					heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-				},
+		let pl = wallPositions
+			.map(async (position, index) => {
+				const cartesian3List = await Helper.positionFromRoutePlan(this.startPosition, position, this.tk);
+				let nextTargetPosition;
+				if (index === wallPositions.length - 1) {
+					nextTargetPosition = wallPositions[0];
+				} else {
+					nextTargetPosition = wallPositions[index + 1];
+				}
+				const _targetPosition = position;
+				const _nextTargetPosition = nextTargetPosition;
+				const _manPosition = manPositions[index];
 
-				wall: {
-					positions: {
-						references: [
-							Helper.PropertyCo.czmlReferenceCompositeValue(czml, "position", {
-								cartesian: [_targetPosition.x, _targetPosition.y, _targetPosition.z],
-							}),
-							Helper.PropertyCo.czmlReferenceCompositeValue(czml, "position", {
-								cartesian: end_createWallEnd,
-							}),
-						],
+				let start_end = Helper.czmlPositionWithConstVelocity(startSendMan, endSendMan, cartesian3List);
+				const packet = {
+					id: "man-" + (index + 1),
+					availability: Helper.czmlAvailability(startSendMan, finalEnd),
+					properties: {
+						_targetPosition,
+						_nextTargetPosition,
+						_manPosition,
 					},
-					material: {
-						image: {
-							image: new URL("../cesium/jiaotongguanzhi1.png", import.meta.url).href,
-							repeat: {
-								cartesian2: [1, 1],
-							},
-							transparent: true,
+					position: {
+						cartesian: [start_end].flat(),
+					},
+					orientation: {
+						velocityReference: "#position",
+					},
+					label: {
+						text: "警察",
+						font: "20px sans-serif",
+						showBackground: true,
+						eyeOffset: {
+							cartesian: [0, 7.2, 0],
 						},
 					},
-				},
-			};
-			czml.push(packet);
-			czml.push({
-				id: "man-path" + (index + 1),
-				availability: Helper.PropertyCo.czmlAvailability(start, end),
-				position: {
-					reference: "man-" + (index + 1) + "#position",
-				},
-				path: {
-					leadTime: 2,
-					trailTime: 60,
-					width: 10,
-					resolution: 1,
-					material: {
-						polylineGlow: {
-							glowPower: 0.3,
-							taperPower: 0.3,
-							color: {
-								rgba: [255, 0, 0, 255],
-							},
+					model: {
+						gltf: "./libs/Cesium/SampleData/models/CesiumMan/Cesium_Man.glb",
+						scale: 4,
+						runAnimations: {
+							reference: Helper.czmlReferenceCompositeValue(
+								czml,
+								"properties.runAnimations",
+								[
+									{
+										interval: Helper.czmlAvailability(startSendMan, endToManPosition),
+										value: true,
+									},
+									{
+										interval: Helper.czmlAvailability(endToManPosition, finalEnd),
+										value: false,
+									},
+								],
+								"man-customProperty-" + (index + 1)
+							),
 						},
+						heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
 					},
-				},
+				};
+				czml.push(packet);
+				return packet;
+			})
+			.map((promise) => {
+				return promise.then((packet) => {
+					const { _targetPosition, _nextTargetPosition, _manPosition } = packet.properties;
+					let end_createWallEnd = Helper.czmlPositionWithConstVelocity(endSendMan, endCreateWall, [
+						_targetPosition,
+						_nextTargetPosition,
+					]);
+
+					let createWall_manPosition = Helper.czmlPositionWithConstVelocity(endCreateWall, endToManPosition, [
+						_nextTargetPosition,
+						_manPosition,
+					]);
+
+					let real_end_createWallEnd = end_createWallEnd.concat(
+						[Cesium.JulianDate.toIso8601(finalEnd)].concat(
+							end_createWallEnd.slice(end_createWallEnd.length - 3, end_createWallEnd.length)
+						)
+					);
+					Helper.packetIncrementPosition(
+						packet,
+						end_createWallEnd,
+						createWall_manPosition,
+						Helper.czmlStandAt(endToManPosition, finalEnd, _manPosition, this.accodemtPosition)
+					);
+					Helper.packetAddWall(czml, packet, _targetPosition, real_end_createWallEnd);
+					Helper.packetAddPath(czml, packet, startSendMan, endSendMan);
+				});
 			});
-		});
-
 		await Promise.all(pl);
+		self.czmlDataSource.load(czml).then(() => {
+			Helper.setTimeCallBack(self.viewer, [
+				{
+					time: endToManPosition,
+					handler(currentTime) {
+						let entityId = ["man-1", "man-2", "man-3", "man-4"];
+						entityId.forEach(async (id) => {
+							let manEntity = self.czmlDataSource.entities.getById(id);
+							let emitterPosition = giveCartesian3Height(
+								manEntity.properties["_manPosition"]._value,
+								CONFIG.WALL_HEIGTH
+							);
+							self.czmlBox.add(Helper.createWater(emitterPosition, self.accodemtPosition));
+						});
+					},
+				},
+			]);
+		});
 		console.log(czml);
-		dataSource.load(czml);
+		console.log(self.czmlDataSource);
 	}
 	_setAccident(position, time, view) {
 		throw new Error("重载错误");
@@ -303,3 +259,4 @@ export default class WorkFlow {
 	stop() {}
 	openVideo() {}
 }
+function initTime() {}

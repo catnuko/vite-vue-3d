@@ -1,3 +1,5 @@
-export * as EntityOp from "./entityOperation";
-export * as EntityMa from "./entityMake";
-export * as PropertyCo from "./propertyCompute";
+export * from "./entityOperation";
+export * from "./entityMake";
+export * from "./propertyCompute";
+export * from "./viewOperation";
+export * from "./packetOperation";
