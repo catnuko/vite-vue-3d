@@ -9,10 +9,6 @@
 		</div>
 		<div class="workFlow" v-for="workFlow in workFlowList">
 			<div class="workFlow-title">{{ workFlow.title }}</div>
-			<!-- <div class="step">
-				<div class="step-title">{{ item.num }}:{{ item.title }}</div>
-				<div class="step-content">{{ item.content }}</div>
-			</div> -->
 			<el-steps direction="vertical" :active="1">
 				<el-step
 					v-for="item in workFlow.steps"
@@ -84,13 +80,15 @@ onMounted(() => {
 	top: 5vh;
 
 	width: 20vw;
-	// height: 10vh;
-	background-color: rgba(127, 255, 212, 0.397);
+
+	background-color: white;
+	color: black;
+	padding: 10px;
+	border-radius: 5px;
 }
 .step {
 	margin: 10px, 0px;
 	padding: 5px;
-	color: white;
 	&-title {
 	}
 	&-content {

@@ -29,6 +29,7 @@ export default class TrafficWorkFlow extends WorkFlow {
 		]);
 	}
 	loadCzml() {
+		//生成动画所需的时间节点
 		let startAccident = this.accidentTime;
 		let [startShowMan, endShowMan] = Helper.incrementJulianDateList(startAccident, [5, 3]);
 		let [startCar, endCar] = Helper.incrementJulianDateList(startAccident, [5, 2]);
@@ -42,10 +43,12 @@ export default class TrafficWorkFlow extends WorkFlow {
 			finalEnd,
 		};
 		this.viewer.timeline.zoomTo(startAccident, finalEnd);
+		//生成动画所需的位置数据
 		let manPositions = Helper.fourPointByOne(this.accodemtPosition, CONFIG.MAN_DISTANCE, Math.PI / 4);
 		manPositions = [manPositions.east, manPositions.north, manPositions.west, manPositions.south].map((i) =>
 			giveCartesian3Height(i, 3)
 		);
+		//生成时间段
 		const allAnimation = czmlTimeIntervalFactor.point({
 			start: startAccident,
 			end: finalEnd,
@@ -55,10 +58,10 @@ export default class TrafficWorkFlow extends WorkFlow {
 		const showMan = czmlTimeIntervalFactor.cesiumMan({
 			start: startShowMan,
 			end: finalEnd,
-			view: {
-				destination: [-2746801.160400554, 4763651.357878603, 3220910.967226206],
-				hpr: [0.2741199786935695, -0.4688640631721803, 6.283182631305866],
-			},
+			// view: {
+			// 	destination: [-2746801.160400554, 4763651.357878603, 3220910.967226206],
+			// 	hpr: [0.2741199786935695, -0.4688640631721803, 6.283182631305866],
+			// },
 			packetId: "cesium-man",
 			flashShow: {
 				start: startShowMan,
@@ -98,7 +101,7 @@ export default class TrafficWorkFlow extends WorkFlow {
 			],
 			label: { show: false },
 		});
-
+		//显示时间段
 		let shower = new CzmlTimeIntervalShow([allAnimation, showMan, showArrow, showCar]);
 		shower.setClock({
 			currentTime: Cesium.JulianDate.toIso8601(startAccident),

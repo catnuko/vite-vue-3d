@@ -1,6 +1,7 @@
 import CzmlDataSource from "cesium/Source/DataSources/CzmlDataSource";
-import { getDefer } from "ht-cesium-utils";
+import { cameraFlyTo, getDefer } from "ht-cesium-utils";
 import { v4 as uuidv4 } from "uuid";
+import { clone } from "./packetOperation";
 import { setTimeViewList } from "./viewOperation";
 // export interface IPacket {
 // 	availability: string;
@@ -46,6 +47,15 @@ export interface ICzmlPacket<InnerValue> {
 	setViewer(viewer: Cesium.Viewer);
 	destroy(viewer);
 }
+export type CzmlTimeIntervalState<T> = {
+	state: T;
+	time?: {
+		//onchange的调用时间被修改为[start+offset[0],end+offset[1]]
+		offset: [number, number];
+		unit: "seconds" | "minutes" | "hours" | "days";
+	};
+	onChange: (news: T, isContain: Boolean) => T;
+};
 export class CzmlPacket implements ICzmlPacket<IPacket> {
 	innerValue: IPacket;
 	constructor(innerValue: IPacket) {
@@ -141,6 +151,10 @@ export interface CzmlTimeIntervalOptions {
 /**
  * 自定义时间段，用来加载packet、entity和particleSystem，并控制其availability。
  * 
+ * 可添加状态和回调函数。
+ * 
+ * 例如：1、到start时间时跳转视角。2、start到end时间段内，建筑是半透明的。
+ *
  * 开始|_________________________________________________________________________|结束
  *
  *     <---startTo----|____________a____________|---------endTo---------------->|
@@ -177,7 +191,6 @@ export class CzmlTimeInterval {
 			this.setView(options.view);
 		}
 		this.timeInterval = new Cesium.TimeInterval({ start: this.start, stop: this.end });
-		this.setView(options.view)
 		// this.packets = new Cesium.AssociativeArray();
 		this.packets = new Map();
 		const self = this;
@@ -231,7 +244,7 @@ export class CzmlTimeInterval {
 			});
 		}
 	}
-	add(iCzmlPacket, type = "packet", needBuilder=true) {
+	add(iCzmlPacket, type = "packet", needBuilder = true) {
 		let innerPacket = iCzmlPacket;
 		if (type === "entity" && needBuilder) {
 			innerPacket = new CzmlEntity(iCzmlPacket);
@@ -242,6 +255,13 @@ export class CzmlTimeInterval {
 		}
 		innerPacket.setAvailability(this.getAvailability());
 		this.packets.set(innerPacket.getId(), innerPacket);
+	}
+	states: (CzmlTimeIntervalState<object> & { oldState?: object })[] = [];
+	/**
+	 * 可在进入时间段和退出时间段执行自定义函数
+	 */
+	addState<T extends object>(options: CzmlTimeIntervalState<T>) {
+		this.states.push(options);
 	}
 	setViewerhandle;
 	viewer;
@@ -269,7 +289,26 @@ export class CzmlTimeInterval {
 		destroyObject(this);
 	}
 	setView(view: { destination: [number, number, number]; hpr: [number, number, number] }) {
-		this.view = view;
+		const self = this;
+		this.addState({
+			state: {
+				view: view,
+			},
+			time: {
+				offset: [-3, 0],
+				unit: "seconds",
+			},
+			onChange(state, isContain) {
+				if (isContain) {
+					cameraFlyTo(
+						self.viewer,
+						new Cesium.Cartesian3(...state.view.destination),
+						new Cesium.HeadingPitchRoll(...state.view.hpr)
+					);
+				}
+				return state;
+			},
+		});
 	}
 	/**
 	 * 合并两个时间间隔
@@ -352,7 +391,7 @@ export class CzmlTimeIntervalShow {
 		this.czmlDataSource = new Cesium.CzmlDataSource("testCzmlDataSource");
 		viewer.dataSources.add(this.czmlDataSource);
 		this.viewer = viewer;
-		this.initView();
+		this.watchState();
 		let defer = getDefer();
 		const czml = this.toCzml();
 		console.log(czml);
@@ -372,17 +411,41 @@ export class CzmlTimeIntervalShow {
 		this.setTimeViewListHandle && this.setTimeViewListHandle();
 		destroyObject(this);
 	}
-	initView() {
-		let viewList = this.czmlTimeIntervalList
-			.filter((i) => i.view)
-			.map((timeInterval: CzmlTimeInterval) => {
-				return {
-					start: timeInterval.start,
-					stop: Cesium.JulianDate.addSeconds(timeInterval.start, 1.5, new Cesium.JulianDate()),
-					data: timeInterval.view,
-				};
+	watchState() {
+		let stateList = this.czmlTimeIntervalList
+			.filter((i) => i.states.length)
+			.map((t) => {
+				return t.states.map((state) => {
+					let start = t.start;
+					let end = t.end;
+					if (state.time) {
+						let startOffset = state.time.offset[0];
+						let endOffset = state.time.offset[1];
+						let method = "add" + titleCase(state.time.unit);
+						if (startOffset !== 0) {
+							Cesium.JulianDate[method](start, startOffset, start);
+						}
+						if (endOffset !== 0) {
+							Cesium.JulianDate[method](end, endOffset, end);
+						}
+					}
+					return new Cesium.TimeInterval({ start: start, stop: end, data: state });
+				});
+			})
+			.flat();
+		this.setTimeViewListHandle = this.viewer.clock.onTick.addEventListener((clock) => {
+			const currentTime = clock.currentTime;
+			stateList.forEach((interval) => {
+				let stateOption = interval.data;
+				stateOption.isContain = Cesium.TimeInterval.contains(interval, currentTime);
+				if (stateOption.oldIsContain !== stateOption.isContain) {
+					let newState = stateOption.onChange(stateOption.state, stateOption.isContain);
+					stateOption.oldState = clone(stateOption.state);
+					stateOption.state = clone(newState);
+				}
+				stateOption.oldIsContain = stateOption.isContain;
 			});
-		this.setTimeViewListHandle = setTimeViewList(this.viewer, viewList);
+		});
 	}
 }
 function processAvailability(entity, packet) {
@@ -423,4 +486,8 @@ function destroyObject(object) {
 	for (var key in object) {
 		delete object[key];
 	}
+}
+
+function titleCase(str) {
+	return str.slice(0, 1).toUpperCase() + str.slice(1).toLowerCase();
 }

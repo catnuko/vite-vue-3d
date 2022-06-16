@@ -88,6 +88,7 @@ export function wallAroundPoint(position, distance, rotation = 0) {
 	let t = positions.map((i) => giveCartesian3Height(i, CONFIG.WALL_HEIGTH));
 	console.log(positions);
 	console.log(t);
+	Cesium.JulianDate.addDays
 	return new Cesium.Entity({
 		wall: {
 			positions: t,

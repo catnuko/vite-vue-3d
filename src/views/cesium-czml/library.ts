@@ -144,7 +144,7 @@ export const czmlTimeIntervalFactor = {
 			gltf: "./libs/Cesium/SampleData/models/CesiumMan/Cesium_Man.glb",
 		});
 	},
-	cesiumMilkTruck: function (o: CreaterOptions<ModelCreaterOptions>) {
+	cesiumMilkTruck: function (o: CreaterOptions<ModelCreaterOptions>): CzmlTimeInterval {
 		return this.model({
 			...o,
 			gltf: "./libs/Cesium/SampleData/models/CesiumMilkTruck/CesiumMilkTruck.glb",
@@ -175,7 +175,7 @@ export const czmlTimeIntervalFactor = {
 				...o.label,
 			},
 			model: {
-				gltf:o.gltf,
+				gltf: o.gltf,
 				scale: 4,
 				show: o.flashShow
 					? {
