@@ -1,5 +1,6 @@
 import * as PropertyCo from "./propertyCompute";
 import CONFIG from "../config";
+import { v4 as uuidv4 } from "uuid";
 
 export function packetAddPath(czml, packet, start, end) {
 	let id = packet.id;
@@ -57,11 +58,54 @@ export function packetAddWall(czml, packet, startPosition, endPositions) {
 		},
 	};
 }
-export function packetAddMan(packet,start,end,startPosition,endPositoin){
-	
-}
 export function packetIncrementPosition(packet, ...cartesianList) {
 	cartesianList.forEach((_cartesianList) => {
 		packet.position.cartesian = packet.position.cartesian.concat(..._cartesianList);
 	});
+}
+export function clone(obj) {
+	return Object.assign({}, obj);
+}
+export function packetAddArrow(czml, startPosition, endPosition, width, height, packetId = uuidv4()) {
+	let newPacket = getPacket(czml, packetId);
+	newPacket.polygon = {
+		positions: {
+			cartesian: PropertyCo.createRectangleCoordinates(startPosition, endPosition, width, height)
+				.map(PropertyCo.carteain3ToList)
+				.flat(),
+		},
+		material: {
+			image: {
+				image: new URL("../data/arrow.png", import.meta.url).href,
+				transparent: true,
+			},
+		},
+		stRotation: PropertyCo.angelToTargetPosition(startPosition, endPosition) - Math.PI / 2,
+	};
+	return newPacket;
+}
+/**
+ * packetId指定的packet不存在则创建新的packet
+ */
+export function getPacket(czml, packetId) {
+	let packet = czml.find((p) => p.id === packetId);
+	if (packet) {
+		return packet;
+	} else {
+		let packet = {
+			id: packetId,
+		};
+		czml.push(packet);
+		return packet;
+	}
+}
+export function checkPacketProperty(czml, packet, property) {
+	let innerPacket;
+	if (packet[property]) {
+		innerPacket = { id: uuidv4() };
+		czml.push(innerPacket);
+	} else {
+		innerPacket = packet;
+	}
+	return innerPacket;
 }

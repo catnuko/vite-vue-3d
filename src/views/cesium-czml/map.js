@@ -30,7 +30,7 @@ export class MapShow {
 				hpr: new Cesium.HeadingPitchRoll(0.0873333136501282, -0.7927246054726362, 6.28318503262281),
 			});
 			// workFlow.sendMan();
-			workFlow.sendManCzml();
+			workFlow.loadCzml();
 
 			this.workFlowList.push(workFlow);
 			mitter.emit(EVENT.PANEL_SHOW_ADD_WORKFLOW, {

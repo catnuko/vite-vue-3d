@@ -1,6 +1,6 @@
 import { debugPosition, cameraFlyTo, getDefer, cartesian32LonLat, giveCartesian3Height } from "ht-cesium-utils";
 import * as RoutePlan from "../czml/routePlan";
-import { lineString, length } from "@turf/turf";
+import { lineString, length, angle } from "@turf/turf";
 import { v4 as uuidv4 } from "uuid";
 import CONFIG from "../config";
 import * as EntityOp from "./entityOperation";
@@ -95,7 +95,7 @@ export function computeRepeatX(positions, wallHeigth, imageWidth, imageHeight) {
 	return repeatX;
 }
 /**
- * 给出两或多点，计算移动路径
+ * 给出两或多点，计算移动路径，匀速
  */
 export function positionWithConstVelocity(start, end, cartesian3List) {
 	if (cartesian3List.length === 2) {
@@ -140,6 +140,32 @@ function positionsWithConstVelocityFromCartesian3List(start, end, cartesian3List
 		let curTime = Cesium.JulianDate.addSeconds(start, addSeconds, new Cesium.JulianDate());
 		position.addSample(curTime, cartesian);
 	});
+	return position;
+}
+export function czmlPositionWithAccelerateVelocity(start, end, cartesian3List) {
+	let property = positionWithAccelerateVelocity(start, end, cartesian3List);
+	return czmlPotitionProperty(property);
+}
+/**
+ * 给出两或多点，计算移动路径,先加速后急减速
+ */
+export function positionWithAccelerateVelocity(start, end, carteain3List) {
+	const totalSeconds = Cesium.JulianDate.secondsDifference(end, start);
+	let startPosition = carteain3List[0];
+	let endPosition = carteain3List[1];
+
+	const position = new Cesium.SampledPositionProperty();
+	const numberOfSamples = 100;
+	for (let i = 0; i <= numberOfSamples; ++i) {
+		const factor = i / numberOfSamples;
+		const time = Cesium.JulianDate.addSeconds(start, factor * totalSeconds, new Cesium.JulianDate());
+		//factor:[0,1],factor的平方:[0,1]
+		// const locationFactor = Math.pow(factor, 2);
+		//factor:[0,1],factor的平方:[0,1]
+		const locationFactor = Math.sin((factor * Math.PI) / 2);
+		const location = Cesium.Cartesian3.lerp(startPosition, endPosition, locationFactor, new Cesium.Cartesian3());
+		position.addSample(time, location);
+	}
 	return position;
 }
 /**
@@ -313,7 +339,6 @@ export function czmlReferenceCompositeValue(czml, propertyPath, value, packetId 
 		curPacket = {
 			id: packetId,
 		};
-		czml.push(curPacket);
 	}
 	const getProperty = (obj, propertyName) => {
 		let property = obj[propertyName];
@@ -333,5 +358,122 @@ export function czmlReferenceCompositeValue(czml, propertyPath, value, packetId 
 	lastProperty[pathList[pathList.length - 1]] = value;
 	// curPacket = Object.assign(curPacket,fakeCurPacket);
 	curPacket = deepObjectMerge(curPacket, fakeCurPacket);
+	czml.push(curPacket);
 	return packetId + "#" + propertyPath;
+}
+
+export function carteain3ToList(carteain3) {
+	return [carteain3.x, carteain3.y, carteain3.z];
+}
+/**
+ * 在[start,end]时间段内闪烁showNumber次
+ * @returns 
+ */
+export function czmlFlashingShow(czml, propertyPath, start, end, showNumber, packetId) {
+	let timeList = splitTimeInterval(start, end, showNumber * 2 - 1);
+	let timeIntervalList = timeListToTimeIntervalList(timeList);
+	timeIntervalList.forEach((t, index) => {
+		t.value = !(index % 2 === 0);
+	});
+	return czmlReferenceCompositeValue(czml, propertyPath, timeIntervalList, packetId);
+}
+/**
+ * 将时间分成num+2份，2指的是开始和结束
+ */
+export function splitTimeInterval(start, end, num) {
+	let seconds = Cesium.JulianDate.secondsDifference(end, start);
+	seconds = Math.abs(seconds);
+	let step = seconds / num;
+	let list = [start];
+	for (let i = 0; i < num; i++) {
+		list.push(Cesium.JulianDate.addSeconds(start, step * i, new Cesium.JulianDate()));
+	}
+	list.push(end);
+	return list;
+}
+/**
+ * [JulianDate,JulianDate,JulianDate,]=>[timeIntreval,timeIntreval,]
+ */
+export function timeListToTimeIntervalList(timeList) {
+	let intervalList = [];
+	for (let i = 0; i < timeList.length - 1; i++) {
+		intervalList.push({
+			interval: czmlAvailability(timeList[i], timeList[i + 1]),
+		});
+	}
+	return intervalList;
+}
+/**
+ * 计算一个矩形的坐标，并将其旋转至指定的角度，角度由startPosition,targetPosition控制
+ * 			北
+ * D----------------C
+ * |				|
+ * |				|
+ * |		*		|
+ * |directionPosition|		东
+ * |				|
+ * |				|
+ * |				|
+ * A----------------B
+ * 			*
+ * 	  startPosition
+ */
+export function createRectangleCoordinates(startPosition, targetPosition, width, height) {
+	let halfWidth = width / 2;
+	let A = new Cesium.Cartesian3(-halfWidth, 0, 0);
+	let B = new Cesium.Cartesian3(halfWidth, 0, 0);
+	let C = new Cesium.Cartesian3(halfWidth, height, 0);
+	let D = new Cesium.Cartesian3(-halfWidth, height, 0);
+	let rotation = angelToTargetPosition(startPosition, targetPosition);
+	console.log(Cesium.Math.toDegrees(rotation));
+	const transform = Cesium.Transforms.headingPitchRollToFixedFrame(
+		startPosition,
+		new Cesium.HeadingPitchRoll(rotation, 0, 0)
+	);
+	const change = (position) => {
+		Cesium.Matrix4.multiplyByPoint(transform, position, position);
+		return position;
+	};
+	return [A, B, C, D].map(change);
+}
+/**
+ * 计算角AOB,顺时针
+ * 			A
+ * 			|
+ * 			|
+ * 			|
+ * 			|
+ * 			|
+ * 			O
+ * 			startPosition
+ * 		  |
+ * 		|
+ * 	   |
+ * 	  |
+ * 	|
+ * B
+ * targetPosition
+ */
+export function angelToTargetPosition(startPosition, targetPosition) {
+	let O = startPosition;
+	let B = targetPosition;
+	const transform = Cesium.Transforms.eastNorthUpToFixedFrame(startPosition);
+	let A = new Cesium.Cartesian3(0, 1, 0);
+	let OA = new Cesium.Cartesian3();
+	Cesium.Matrix4.multiplyByPoint(transform, A, A);
+	Cesium.Cartesian3.subtract(A, O, OA);
+	Cesium.Cartesian3.normalize(OA, OA);
+	let OB = new Cesium.Cartesian3();
+	Cesium.Cartesian3.subtract(B, O, OB);
+	Cesium.Cartesian3.normalize(OB, OB);
+	let cosValue = Cesium.Cartesian3.dot(OB, OA);
+	let res = Math.acos(cosValue);
+	if (
+		Cesium.Cartographic.fromCartesian(targetPosition).longitude <
+		Cesium.Cartographic.fromCartesian(startPosition).longitude
+	) {
+		return Math.PI * 2 - res;
+	} else {
+		return res;
+	}
 }
