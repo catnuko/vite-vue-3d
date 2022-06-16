@@ -139,6 +139,8 @@ export interface CzmlTimeIntervalOptions {
 	};
 }
 /**
+ * 自定义时间段，用来加载packet、entity和particleSystem，并控制其availability。
+ * 
  * 开始|_________________________________________________________________________|结束
  *
  *     <---startTo----|____________a____________|---------endTo---------------->|

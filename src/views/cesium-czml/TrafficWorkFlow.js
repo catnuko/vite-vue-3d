@@ -96,6 +96,7 @@ export default class TrafficWorkFlow extends WorkFlow {
 				...Helper.czmlPositionWithAccelerateVelocity(startCar, endCar, [routeStart, routeEnd]),
 				...Helper.czmlStandAt(endCar, finalEnd, routeEnd, this.accodemtPosition).flat(),
 			],
+			label: { show: false },
 		});
 
 		let shower = new CzmlTimeIntervalShow([allAnimation, showMan, showArrow, showCar]);
