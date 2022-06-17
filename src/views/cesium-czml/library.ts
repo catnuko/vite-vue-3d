@@ -109,7 +109,7 @@ export const czmlTimeIntervalFactor = {
 				},
 				material: {
 					image: {
-						image: new URL("../../cesium/jiaotongguanzhi1.png", import.meta.url).href,
+						image: new URL("../cesium/jiaotongguanzhi1.png", import.meta.url).href,
 						repeat: {
 							cartesian2: Helper.czmlComputeRepeatX(
 								o.startPosition,
@@ -130,13 +130,13 @@ export const czmlTimeIntervalFactor = {
 		targetPosition: Cesium.Cartesian3;
 		particleSystemOption?: ParticleSystemOption;
 	}>((c, o) => {
-		c.add(Helper.createWater(o.position, o.targetPosition, o.particleSystemOption), "particleSystem", false);
+		c.add(Helper.createWater(o.position, o.targetPosition, o.particleSystemOption), "particleSystem", true);
 	}),
 	fire: createCreater<{
 		position: Cesium.Cartesian3;
 		particleSystemOption?: ParticleSystemOption;
 	}>((c, o) => {
-		c.add(Helper.createFire(o.position, o.particleSystemOption), "particleSystem", false);
+		c.add(Helper.createFire(o.position, o.particleSystemOption), "particleSystem", true);
 	}),
 	cesiumMan: function (o: CreaterOptions<ModelCreaterOptions>) {
 		return this.model({

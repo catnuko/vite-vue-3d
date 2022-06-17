@@ -84,8 +84,12 @@ export class CzmlPacket implements ICzmlPacket<IPacket> {
 }
 export class CzmlEntity implements ICzmlPacket<Cesium.Entity> {
 	innerValue: Cesium.Entity;
-	constructor(innerValueOption: Cesium.Entity.ConstructorOptions) {
-		this.innerValue = new Cesium.Entity(innerValueOption);
+	constructor(innerValueOption: Cesium.Entity.ConstructorOptions, isInnerValue) {
+		if (isInnerValue) {
+			this.innerValue = innerValueOption as any;
+		} else {
+			this.innerValue = new Cesium.Entity(innerValueOption);
+		}
 	}
 
 	setAvailability(availability: string): void {
@@ -116,8 +120,12 @@ export class CzmlParticleSystem implements ICzmlPacket<Cesium.ParticleSystem> {
 	innerValue: Cesium.ParticleSystem;
 	availability = "";
 	id = uuidv4();
-	constructor(innerValueOption?: ParticleSystemOption) {
-		this.innerValue = new Cesium.ParticleSystem(innerValueOption);
+	constructor(innerValueOption: ParticleSystemOption, isInnerValue) {
+		if (isInnerValue) {
+			this.innerValue = innerValueOption as any;
+		} else {
+			this.innerValue = new Cesium.ParticleSystem(innerValueOption);
+		}
 	}
 	setAvailability(availability: string): void {
 		this.availability = availability;
@@ -150,9 +158,9 @@ export interface CzmlTimeIntervalOptions {
 }
 /**
  * 自定义时间段，用来加载packet、entity和particleSystem，并控制其availability。
- * 
+ *
  * 可添加状态和回调函数。
- * 
+ *
  * 例如：1、到start时间时跳转视角。2、start到end时间段内，建筑是半透明的。
  *
  * 开始|_________________________________________________________________________|结束
@@ -244,13 +252,13 @@ export class CzmlTimeInterval {
 			});
 		}
 	}
-	add(iCzmlPacket, type = "packet", needBuilder = true) {
+	add(iCzmlPacket, type = "packet", isInnerValue = false) {
 		let innerPacket = iCzmlPacket;
-		if (type === "entity" && needBuilder) {
-			innerPacket = new CzmlEntity(iCzmlPacket);
-		} else if (type === "particleSystem" && needBuilder) {
-			innerPacket = new CzmlParticleSystem(iCzmlPacket);
-		} else if (type === "packet" && needBuilder) {
+		if (type === "entity" && isInnerValue) {
+			innerPacket = new CzmlEntity(iCzmlPacket, isInnerValue);
+		} else if (type === "particleSystem" && isInnerValue) {
+			innerPacket = new CzmlParticleSystem(iCzmlPacket, isInnerValue);
+		} else if (type === "packet") {
 			innerPacket = new CzmlPacket(iCzmlPacket);
 		}
 		innerPacket.setAvailability(this.getAvailability());
@@ -274,12 +282,15 @@ export class CzmlTimeInterval {
 		this.packets.forEach((i) => {
 			if (i instanceof CzmlParticleSystem) {
 				let availability = i.getAvailability();
-				primitiveList.push(Cesium.TimeInterval.fromIso8601({ iso8601: availability }));
+				primitiveList.push({
+					interval: Cesium.TimeInterval.fromIso8601({ iso8601: availability }),
+					czmlPrimitive: i,
+				});
 			}
 		});
 		this.setViewerhandle = viewer.clock.onTick.addEventListener((clock) => {
 			primitiveList.forEach((i) => {
-				i.innerValue.show = Cesium.TimeInterval.contains(i, clock.currentTime);
+				i.czmlPrimitive.innerValue.show = Cesium.TimeInterval.contains(i.interval, clock.currentTime);
 			});
 		});
 	}
