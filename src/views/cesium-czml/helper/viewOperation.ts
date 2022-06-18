@@ -1,5 +1,3 @@
-import * as PropertyCo from "./propertyCompute";
-import * as EntityOp from "./entityOperation";
 import { cameraFlyTo } from "ht-cesium-utils";
 export function setTimeViewList(viewer, timeViewList) {
 	let lastInterval;

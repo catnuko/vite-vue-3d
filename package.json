@@ -34,6 +34,7 @@
 		"dayjs": "^1.11.2",
 		"element-plus": "^2.1.4",
 		"flexsearch": "^0.7.21",
+		"gl-matrix": "^3.4.3",
 		"ht-cesium-utils": "^1.0.12",
 		"ht-components": "^1.0.14",
 		"ht-popup": "^1.0.3",
@@ -58,6 +59,7 @@
 		"sass": "^1.49.7",
 		"vite": "^2.8.0",
 		"vite-plugin-dtcesium": "^1.0.3",
-		"vite-plugin-pages": "^0.20.2"
+		"vite-plugin-pages": "^0.20.2",
+		"vite-plugin-string": "^1.1.2"
 	}
 }

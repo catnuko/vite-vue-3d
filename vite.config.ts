@@ -1,8 +1,9 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import Pages from "vite-plugin-pages";
-import dtcesiumPlugin from "vite-plugin-dtcesium";
 import legacy from "@vitejs/plugin-legacy";
+import vitePluginString from 'vite-plugin-string'
+
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -21,6 +22,7 @@ export default defineConfig({
 			targets: ["chrome 52"], // 需要兼容的目标列表，可以设置多个
 			additionalLegacyPolyfills: ["regenerator-runtime/runtime"], // 面向IE11时需要此插件
 		}),
+		vitePluginString(),
 	],
 	base: "./",
 	build: {
