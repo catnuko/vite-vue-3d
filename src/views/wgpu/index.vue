@@ -11,10 +11,13 @@ import { ref } from "vue";
 import triangle from "./examples/triangle/main";
 import triangleMSAA from "./examples/triangleMSAA/main";
 import rotatingCube from "./examples/rotatingCube/main";
+import rotatingCubeMSAA from "./examples/rotatingCubeMSAA/main";
 import twoCube from "./examples/twoCube/main";
 import texturedCube from "./examples/texturedCube/main";
 import fractalCube from "./examples/fractalCube/main";
 import cubeMap from "./examples/cubeMap/main";
+import deferredRendering from "./examples/deferredRendering/main";
+import shadowMapping from "./examples/shadowMapping/main";
 const ID = "wgpu";
 const options = ref([
 	{
@@ -28,6 +31,10 @@ const options = ref([
 	{
 		label: "rotatingCube",
 		constructor: rotatingCube,
+	},
+	{
+		label: "rotatingCubeMSAA",
+		constructor: rotatingCubeMSAA,
 	},
 	{
 		label: "twoCube",
@@ -44,6 +51,14 @@ const options = ref([
 	{
 		label: "cubeMap",
 		constructor: cubeMap,
+	},
+	{
+		label: "deferredRendering",
+		constructor: deferredRendering,
+	},
+	{
+		label: "shadowMapping",
+		constructor: shadowMapping,
 	},
 ]);
 const value = ref("");
