@@ -50,11 +50,11 @@ export interface ICzmlPacket<InnerValue> {
 export type CzmlTimeIntervalState<T> = {
 	state: T;
 	time?: {
-		//onchange的调用时间被修改为[start+offset[0],end+offset[1]]
+		//onTimeChange的调用时间被修改为[start+offset[0],end+offset[1]]
 		offset: [number, number];
 		unit: "seconds" | "minutes" | "hours" | "days";
 	};
-	onChange: (news: T, isContain: Boolean) => T;
+	onTimeChange: (news: T, isContain: Boolean) => T;
 };
 export class CzmlPacket implements ICzmlPacket<IPacket> {
 	innerValue: IPacket;
@@ -76,8 +76,8 @@ export class CzmlPacket implements ICzmlPacket<IPacket> {
 		}
 		return this.innerValue;
 	}
-	setViewer(viewer: Cesium.Viewer) {}
-	destroy(viewer) {}
+	setViewer(viewer: Cesium.Viewer) { }
+	destroy(viewer) { }
 	clone() {
 		return Object.assign({}, this.innerValue);
 	}
@@ -152,8 +152,8 @@ export interface CzmlTimeIntervalOptions {
 	end: Cesium.JulianDate;
 	label?: string;
 	view?: {
-		destination: [number, number, number];
-		hpr: [number, number, number];
+		destination: number[];
+		hpr: number[];
 	};
 }
 /**
@@ -309,7 +309,7 @@ export class CzmlTimeInterval {
 				offset: [-3, 0],
 				unit: "seconds",
 			},
-			onChange(state, isContain) {
+			onTimeChange(state, isContain) {
 				if (isContain) {
 					cameraFlyTo(
 						self.viewer,
@@ -404,6 +404,7 @@ export class CzmlTimeIntervalShow {
 		this.viewer = viewer;
 		this.watchState();
 		let defer = getDefer();
+		this.setClock(viewer.clock)
 		const czml = this.toCzml();
 		console.log(czml);
 		this.czmlTimeIntervalList.forEach((i) => {
@@ -450,7 +451,7 @@ export class CzmlTimeIntervalShow {
 				let stateOption = interval.data;
 				stateOption.isContain = Cesium.TimeInterval.contains(interval, currentTime);
 				if (stateOption.oldIsContain !== stateOption.isContain) {
-					let newState = stateOption.onChange(stateOption.state, stateOption.isContain);
+					let newState = stateOption.onTimeChange(stateOption.state, stateOption.isContain);
 					stateOption.oldState = clone(stateOption.state);
 					stateOption.state = clone(newState);
 				}
@@ -501,4 +502,10 @@ function destroyObject(object) {
 
 function titleCase(str) {
 	return str.slice(0, 1).toUpperCase() + str.slice(1).toLowerCase();
+}
+export function createView(time: Cesium.JulianDate, view: {
+	destination: number[];
+	hpr: number[];
+}) {
+	return new CzmlTimeInterval({ start: time, end: Cesium.JulianDate.addSeconds(time, 3, new Cesium.JulianDate()), view: view })
 }
