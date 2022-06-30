@@ -38,6 +38,7 @@
 		"gl-matrix": "^3.4.3",
 		"ht-cesium-utils": "^1.0.12",
 		"ht-components": "^1.0.14",
+		"ht-layers": "^1.0.19",
 		"ht-popup": "^1.0.3",
 		"mitt": "^3.0.0",
 		"observable-emit": "1.0.1",
