@@ -8,7 +8,7 @@ import { mitter, EVENT } from "./mitt";
 
 let start = dayjs();
 let end = dayjs().add(1, "minutes");
-const tk = "1292dbbb36f799c61eabc3c732eef02c";
+const tk = "7a801d6cd03da3cc229d90a6c8897e2a";
 export class MapShow {
 	constructor(viewer) {
 		this.viewer = viewer;

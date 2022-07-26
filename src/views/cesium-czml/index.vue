@@ -4,7 +4,7 @@ import { HtGlobe } from "ht-components";
 import { onBeforeUnmount } from "vue";
 import Duty from "./components/Duty.vue";
 
-const tiandituTk = "1292dbbb36f799c61eabc3c732eef02c";
+const tiandituTk = "7a801d6cd03da3cc229d90a6c8897e2a";
 let mapshow: MapShow;
 const onLoaded = (viewer) => {
 	mapshow = new MapShow(viewer);
