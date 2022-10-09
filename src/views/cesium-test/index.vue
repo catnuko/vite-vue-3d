@@ -42,7 +42,7 @@ const onLoaded = (viewer) => {
 			appearance: new Cesium.PolylineMaterialAppearance({
 				material: new Cesium.Material({
 					fabric: {
-						type: Cesium.Material.PolylineDashType,
+						// type: Cesium.Material.PolylineDashType,
 						uniforms: {
 							color: new Cesium.Color(1.0, 0.0, 1.0, 1.0),
 							image: arrowImg,
