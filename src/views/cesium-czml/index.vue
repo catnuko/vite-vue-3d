@@ -80,10 +80,13 @@ const onChange = () => {
 const gaoDeKey = "2314ba9a5f02bf91a45e5c4b0cf10ae7";
 const getRoute = () => {
 	planRouteFromCartesian3ToCartesian3(
-		new Cesium.Cartesian3(
-			-2747002.792677326, 4762920.853284816, 3221682.9617121695
+		Cesium.Cartesian3.fromDegrees(
+            119.96678831965359,
+            30.540316300443717
         ),
-		new Cesium.Cartesian3(-2747647.4599156324, 4762633.300304891, 3221559.248033263),
+		new Cesium.Cartesian3(
+            -2746084.700591196, 4762897.566400081, 3222494.5917901825
+        ),
 		undefined,
 		gaoDeKey
 	).then((res) => {

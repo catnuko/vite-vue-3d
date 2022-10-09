@@ -1,35 +1,86 @@
 <template>
 	<HtGlobe :tiandituTk="tiandituTk" @loaded="onLoaded"> </HtGlobe>
 </template>
-<script lang="ts">
+<script setup>
 import { defineComponent, onMounted, ref } from "vue";
 import { HtGlobe } from "ht-components";
-import axios from 'axios'
-function copyTextToClipboard(text) {
-	navigator.clipboard.writeText(text).then(
-		function () {
-			console.log("Async: Copying to clipboard was successful!");
+import { pathLibrary } from "./path-xiaoYuan";
+const arrowImg = new URL("./arrow-up.png", import.meta.url).href;
+const tiandituTk = "s" || window.projectConfig.tiandituTk;
+const onLoaded = (viewer) => {
+	if (Cesium.FeatureDetection.supportsImageRenderingPixelated()) {
+		viewer.resolutionScale = window.devicePixelRatio;
+	}
+	// 开启抗锯齿
+	viewer.scene.postProcessStages.fxaa.enabled = true;
+	let polyline = viewer.entities.add({
+		polyline: {
+			positions: pathLibrary.德清县交警大队.polyline,
+			width: 1,
+			material: new Cesium.PolylineDashMaterialProperty({
+				color: Cesium.Color.fromCssColorString("#4662d9").withAlpha(0.0),
+				gapColor: Cesium.Color.WHITE.withAlpha(0.0),
+				dashLength: 0,
+			}),
+			clampToGround: true,
 		},
-		function (err) {
-			console.error("Async: Could not copy text: ", err);
-		}
+		show: true,
+	});
+	viewer.flyTo(polyline, { duration: 1 });
+	let bkColor = Cesium.Color.fromCssColorString("#4662d9");
+	let arrowColor = Cesium.Color.WHITE.withAlpha(0.1);
+	console.log(Cesium);
+	viewer.scene.primitives.add(
+		new Cesium.GroundPolylinePrimitive({
+			geometryInstances: new Cesium.GeometryInstance({
+				geometry: new Cesium.GroundPolylineGeometry({
+					positions: pathLibrary.德清县交警大队.polyline,
+					width: 10.0,
+					vertexFormat: Cesium.PolylineMaterialAppearance.VERTEX_FORMAT,
+				}),
+			}),
+			appearance: new Cesium.PolylineMaterialAppearance({
+				material: new Cesium.Material({
+					fabric: {
+						type: Cesium.Material.PolylineDashType,
+						uniforms: {
+							color: new Cesium.Color(1.0, 0.0, 1.0, 1.0),
+							image: arrowImg,
+							markerdelta: 0.02,
+							uvdelta: 0.01,
+						},
+						source: `
+							uniform vec4 color;
+							uniform float uvdelta;
+							uniform float markerdelta;
+							uniform sampler2D image;
+							czm_material czm_getMaterial(czm_materialInput materialInput)
+							{
+								czm_material material = czm_getDefaultMaterial(materialInput);
+								vec4 fragColor = color;
+								vec4 tc = vec4(1.0, 1.0, 1.0, 0.0);
+								vec2 vUV = materialInput.st;
+								float uvx = vUV.x;
+								float muvx = mod(uvx, markerdelta);
+								float halfd = markerdelta / 2.0;
+								if(muvx >= halfd && muvx <= halfd + uvdelta) {
+									float s = (muvx - halfd) / uvdelta;
+									tc = texture2D(image, vec2(s,vUV.y));
+									fragColor.xyzw = tc.w >= 0.5 ? tc.xyzw : fragColor.xyzw;
+								}
+								fragColor = czm_gammaCorrect(fragColor);
+								material.emission = fragColor.rgb;
+								material.alpha = fragColor.a;
+								return material;
+							}
+						`,
+					},
+					translucent: true,
+				}),
+			}),
+		})
 	);
-}
-export default defineComponent({
-	name: "harpgl",
-	components: { HtGlobe },
-	setup(props, { slots, emit }) {
-		const tiandituTk = "7a801d6cd03da3cc229d90a6c8897e2a";
-		let _onChange;
-		const onLoaded = (viewer: Cesium.Viewer) => {
-			let entities = []
-			axios.post("")
-			viewer.flyTo(czmlDataSource);
-		};
-
-		return { tiandituTk, onLoaded };
-	},
-});
+};
 </script>
 <style scoped>
 #cesium-map {
