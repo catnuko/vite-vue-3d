@@ -3,7 +3,6 @@
 </template>
 <script lang="ts">
 import { defineComponent, onMounted } from "vue";
-import { main } from "./map";
 import { HtGlobe } from "ht-components";
 import { MapShow } from "./map";
 export default defineComponent({

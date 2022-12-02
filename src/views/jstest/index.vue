@@ -1,6 +1,5 @@
 <template>
 	<div id="container">
-		<!-- <div class="test"></div> -->
 		<div class="test1">hello,world</div>
 	</div>
 </template>

@@ -2,8 +2,7 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import Pages from "vite-plugin-pages";
 import legacy from "@vitejs/plugin-legacy";
-import vitePluginString from 'vite-plugin-string'
-
+import vitePluginString from "vite-plugin-string";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -18,16 +17,17 @@ export default defineConfig({
 			dirs: "src/views",
 			exclude: ["**/*.ts", "**/*.js"],
 		}),
-		legacy({
-			targets: ["chrome 52"], // 需要兼容的目标列表，可以设置多个
-			additionalLegacyPolyfills: ["regenerator-runtime/runtime"], // 面向IE11时需要此插件
-		}),
+		// legacy({
+		// 	targets: ["chrome 52"], // 需要兼容的目标列表，可以设置多个
+		// 	additionalLegacyPolyfills: ["regenerator-runtime/runtime"], // 面向IE11时需要此插件
+		// }),
 		vitePluginString({
-			compress:false,
+			compress: false,
 		}),
 	],
 	base: "./",
 	build: {
+		target: "es2020",
 		assetsDir: "assets",
 	},
 	server: {
