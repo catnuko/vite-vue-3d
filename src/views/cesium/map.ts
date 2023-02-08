@@ -1,49 +1,102 @@
-import * as Cesium from "cesium";
 import { Operation } from "ht-components";
 import { cartesian32LonLat, giveCartesian3Height } from "ht-cesium-utils";
 import { length, lineString } from "@turf/turf";
 export class MapShow {
 	constructor(private readonly viewer: Cesium.Viewer) {
-		this.viewer.camera.setView({
-			destination: new Cesium.Cartesian3(-2802781.396485012, 4870404.471191286, 3165503.550263197),
-			orientation: {
-				heading: 6.283185307179582,
-				pitch: -1.568711439472004, // default value (looking down)
-				roll: 0.0,
-			},
-		});
+		// this.viewer.camera.setView({
+		// 	destination: new Cesium.Cartesian3(-2802781.396485012, 4870404.471191286, 3165503.550263197),
+		// 	orientation: {
+		// 		heading: 6.283185307179582,
+		// 		pitch: -1.568711439472004, // default value (looking down)
+		// 		roll: 0.0,
+		// 	},
+		// });
 
-		let operation = new Operation({ viewer });
-		operation.interaction.draw("polyline").then((res: Cesium.Cartesian3[]) => {
-			let HEIGHT = 20;
-			let IMAGE_WIDTH = 991;
-			let IMAGE_HEIGTH = 394;
-			let lineLength = length(
-				lineString(
-					res.map((x) => {
-						let _x = cartesian32LonLat(x);
-						return [_x.lon, _x.lat];
-					})
-				),
-				{
-					units: "meters",
-				}
-			);
-			let shouldWidth = (IMAGE_WIDTH / IMAGE_HEIGTH) * HEIGHT;
-			let repeatX = Math.ceil(lineLength / shouldWidth);
-			viewer.entities.add(
-				new Cesium.Entity({
-					wall: {
-						positions: res.map((x) => giveCartesian3Height(x, HEIGHT)),
-						material: new Cesium.ImageMaterialProperty({
-							image: new URL("./jiaotongguanzhi1.png", import.meta.url).href,
-							repeat: new Cesium.Cartesian2(repeatX, 1),
-							transparent: true,
-						}),
-					},
-				})
-			);
-		});
+		// let operation = new Operation({ viewer });
+		// operation.interaction.draw("polyline").then((res: Cesium.Cartesian3[]) => {
+		// 	let HEIGHT = 20;
+		// 	let IMAGE_WIDTH = 991;
+		// 	let IMAGE_HEIGTH = 394;
+		// 	let lineLength = length(
+		// 		lineString(
+		// 			res.map((x) => {
+		// 				let _x = cartesian32LonLat(x);
+		// 				return [_x.lon, _x.lat];
+		// 			})
+		// 		),
+		// 		{
+		// 			units: "meters",
+		// 		}
+		// 	);
+		// 	let shouldWidth = (IMAGE_WIDTH / IMAGE_HEIGTH) * HEIGHT;
+		// 	let repeatX = Math.ceil(lineLength / shouldWidth);
+		// 	viewer.entities.add(
+		// 		new Cesium.Entity({
+		// 			wall: {
+		// 				positions: res.map((x) => giveCartesian3Height(x, HEIGHT)),
+		// 				material: new Cesium.ImageMaterialProperty({
+		// 					image: new URL("./jiaotongguanzhi1.png", import.meta.url).href,
+		// 					repeat: new Cesium.Cartesian2(repeatX, 1),
+		// 					transparent: true,
+		// 				}),
+		// 			},
+		// 		})
+		// 	);
+		// });
+		let json= [
+			{
+			  coordinates: [123, 23, 0],
+			  name: '图标1',
+			},
+			{
+			  coordinates: [123, 23.001, 0],
+			  name: '图标2',
+			},
+			{
+			  coordinates: [123, 23.002, 0],
+			  name: '图标3',
+			},
+		  ]
+	  
+		  let marks = []
+	  
+		  for (let item of json) {
+			marks.push({
+			  position: Cesium.Cartographic.toCartesian(
+				Cesium.Cartographic.fromDegrees(...item.coordinates)
+			  ),
+			  text: item.name,
+			  height: 50,
+			  imagData: {
+				topIcon: new URL('./mark_header.png',import.meta.url).href, // 文字旁边的图标
+				bodyIcon: new URL('./mark_line.png',import.meta.url).href, // 竖着的条
+				backIcon: new URL('./mark_text.png',import.meta.url).href, // 文字背景
+				isRoate: true, // 是否旋转
+				color: [1, 0, 0, 1],
+			  },
+			})
+		  }
+		  let icons = viewer.scene.primitives.add(
+			// 以primitive的方式添加
+			new Cesium.DTMarkIcons({
+			  marks,
+			  lineWidth: 1, // body长度
+			  markSize: 10, // head大小
+			})
+		  )
+		  console.log(icons)
+			viewer.scene.camera.setView({
+			  destination: new Cesium.Cartesian3(
+				-3199540.572898054,
+				4926294.4611435905,
+				2476836.925695589
+			  ),
+			  orientation: {
+				heading: 4.731597993313004,
+				pitch: -0.1782570432760231,
+				roll: 6.280736632364203,
+			  },
+			})
 	}
 }
 

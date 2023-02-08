@@ -48,7 +48,7 @@ export function makeMap(id: string) {
 
 	const wmsDataSource = new WebTileDataSource({
 		dataProvider: new WMTSProvider({
-			baseUrl: "http://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
+			baseUrl: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
 			parameter: {
 				format: "png",
 				layer: "img",

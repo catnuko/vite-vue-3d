@@ -9,6 +9,7 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			"^dayjs$": "node_modules/dayjs/dayjs.min.js",
+			"rbush": __dirname + "/node_modules/rbush/rbush.js"
 		},
 	},
 	plugins: [
