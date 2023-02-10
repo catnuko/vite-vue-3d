@@ -2,8 +2,12 @@ import mapboxgl from 'mapbox-gl'
 import * as THREE from 'three'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
+//@ts-ignore
+import { GUI } from './lil-gui.module.min'
 import { AfterimagePass } from './AfterimagePass'
 import { HalftonePass } from './HalftonePass'
+import { ColorPass } from './ColorPass'
 mapboxgl.accessToken =
 	'pk.eyJ1IjoiY2F0bnVrbyIsImEiOiJja2MwMDUxc2Iwa2RjMnFxcWk4c2cwcjQ5In0.VlIEyCroRFIp67cwUWLz1Q'
 export class MapShow {
@@ -13,7 +17,7 @@ export class MapShow {
 			'pk.eyJ1IjoiY2F0bnVrbyIsImEiOiJja2MwMDUxc2Iwa2RjMnFxcWk4c2cwcjQ5In0.VlIEyCroRFIp67cwUWLz1Q'
 		let map = new mapboxgl.Map({
 			container: 'map',
-			style: 'mapbox://styles/mapbox/light-v10',
+			style: 'mapbox://styles/mapbox/dark-v10',
 			zoom: 16,
 			center: [-122.3491, 47.6207],
 			pitch: 60,
@@ -57,10 +61,24 @@ export class MapShow {
 				this.map = map
 				let ambientLight = new THREE.AmbientLight(0xffffff)
 				this.scene.add(ambientLight)
+				const loader = new GLTFLoader()
+				loader.load(
+					'https://docs.mapbox.com/mapbox-gl-js/assets/34M_17/34M_17.gltf',
+					gltf => {
+						console.log(gltf.scene)
+						this.scene.add(gltf.scene)
+					}
+				)
 				let geometry = new THREE.BoxBufferGeometry(50, 50, 50, 2, 2, 2)
-				let material = new THREE.MeshNormalMaterial()
+				let material = new THREE.MeshPhongMaterial({
+					color: '#049ef4',
+					emissive: '#000000',
+					specular: '#111111',
+					shininess: 30,
+					fog: true,
+				})
 				cube = new THREE.Mesh(geometry, material)
-				this.scene.add(cube)
+				// this.scene.add(cube)
 				this.map = map
 
 				// use the Mapbox GL JS map canvas for three.js
@@ -103,13 +121,21 @@ export class MapShow {
 					window.innerHeight,
 					params
 				)
-				halftonePass._realRender = halftonePass.render
-				halftonePass.render = function (renderer) {
-					renderer.setRenderTarget(this.textureComp)
-					renderer.clear()
-					this._realRender.apply(this, arguments)
+				// composer.addPass(halftonePass)
+				const params2 = {
+					brightness: 0,
+					contrast: 1,
+					saturation: 1,
+					opacity: 1,
 				}
-				composer.addPass(halftonePass)
+				const colorPass = new ColorPass(params2)
+				composer.addPass(colorPass)
+				this.gui = new GUI()
+				this.gui.width = 350
+				this.gui.add(params2, 'brightness').min(-1).max(1)
+				this.gui.add(params2, 'contrast').min(0).max(2)
+				this.gui.add(params2, 'saturation').min(0).max(2)
+				this.gui.add(params2, 'opacity').min(0).max(1)
 			},
 			render: function (gl, matrix) {
 				let rotationX = new THREE.Matrix4().makeRotationAxis(

@@ -1,5 +1,4 @@
 <template>
-
 	<div class="container" id="map"></div>
 </template>
 <script lang="ts" setup>

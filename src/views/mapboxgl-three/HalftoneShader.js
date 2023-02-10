@@ -295,7 +295,7 @@ const HalftoneShader = {
 					r = g = b = (r + b + g) / 3.0;
 				}
 
-				gl_FragColor = vec4( r, g, b, 1.0 );
+				gl_FragColor = vec4( r, g, b, 0.0 );
 
 			} else {
 
