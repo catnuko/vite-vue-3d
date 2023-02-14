@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>Add a 3D model</title>
+		<meta
+			name="viewport"
+			content="initial-scale=1,maximum-scale=1,user-scalable=no"
+		/>
+		<link
+			href="https://api.mapbox.com/mapbox-gl-js/v1.13.1/mapbox-gl.css"
+			rel="stylesheet"
+		/>
+		<script src="https://api.mapbox.com/mapbox-gl-js/v1.13.1/mapbox-gl.js"></script>
+		<style>
+			body {
+				margin: 0;
+				padding: 0;
+			}
+			#map {
+				position: absolute;
+				top: 0;
+				bottom: 0;
+				width: 100%;
+			}
+		</style>
+	</head>
+	<body>
+		<script src="https://unpkg.com/three@0.117.1/build/three.min.js"></script>
+		<script src="https://unpkg.com/three@0.117.1/examples/js/loaders/GLTFLoader.js"></script>
+		<script src="https://unpkg.com/three@0.117.1/examples/js/postprocessing/EffectComposer"></script>
+		<script src="https://unpkg.com/three@0.117.1/examples/js/postprocessing/ShaderPass"></script>
+		<script src="https://unpkg.com/three@0.117.1/examples/js/postprocessing/RenderPass"></script>
+		<script src="./ColorShader.js"></script>
+		<script src="./ColorPass-117.js"></script>
+		<script src="./threebox.js"></script>
+
+		<div id="map"></div>
+		<script type="module">
+			import { GUI } from 'https://unpkg.com/three@0.140.0/examples/jsm/libs/lil-gui.module.min.js'
+			mapboxgl.accessToken =
+				'pk.eyJ1IjoiY2F0bnVrbyIsImEiOiJja2MwMDUxc2Iwa2RjMnFxcWk4c2cwcjQ5In0.VlIEyCroRFIp67cwUWLz1Q'
+			const map = new mapboxgl.Map({
+				container: 'map',
+				// Choose from Mapbox's core styles, or make your own style with Mapbox Studio
+				style: 'mapbox://styles/mapbox/outdoors-v10',
+				zoom: 18,
+				center: [148.9819, -35.3981],
+				pitch: 60,
+				antialias: true, // create the gl context with MSAA antialiasing, so custom layers are antialiased
+			})
+
+			const THREE = window.THREE
+
+			// configuration of the custom layer for a 3D model per the CustomLayerInterface
+			const customLayer = {
+				id: '3d-model',
+				type: 'custom',
+				renderingMode: '3d',
+				onAdd: function (map, gl) {
+					window.tb = new Threebox(map, gl, {
+						defaultLights: true,
+					})
+					//不能用
+					const testurl1 =
+						'./gltf/AnimatedMorphSphere/glTF/AnimatedMorphSphere.gltf'
+					//只能显示部分
+					const testurl2 = './34M_17.gltf'
+					//看不到
+					const testurl3 = './gltf/BoomBox/glTF/BoomBox.gltf'
+					//正常
+					const testurl4 = './gltf/CesiumMan/glTF/CesiumMan.gltf'
+					//正常
+					const CesiumMilkTruck =
+						'./gltf/CesiumMilkTruck/glTF/CesiumMilkTruck.gltf'
+					//正常
+					const DamagedHelmet = './gltf/DamagedHelmet/glTF/DamagedHelmet.gltf'
+					//正常
+					const Duck = './gltf/Duck/glTF/Duck.gltf'
+					//正常
+					const Flower = './gltf/Flower/Flower.glb'
+					//正常
+					const RobotExpressive = './gltf/RobotExpressive/RobotExpressive.glb'
+					//正常
+					const B1_LayerArri_Pack = './gltf/cl/2_B1_LayerArri.gltf'
+					var options = {
+						obj: B1_LayerArri_Pack,
+						type: 'gltf',
+						scale: 1,
+						units: 'meters',
+						rotation: { x: 0, y: 0, z: 0 }, //default rotation
+					}
+
+					tb.loadObj(options, function (model) {
+						var origin = [148.9819, -35.39847, 0]
+						const soldier = model.setCoords(origin)
+						tb.add(soldier)
+					})
+					tb.scene.add(new THREE.AxesHelper(200))
+					// tb.scene.add(new THREE.CameraHelper(tb.camera))
+					// tb.scene.add(new THREE.DirectionalLightHelper(tb.lights.dirLightBack, 5))
+					// tb.scene.add(new THREE.DirectionalLightHelper(tb.lights.dirLight, 5))
+				},
+				render: function (gl, matrix) {
+					tb.update()
+				},
+			}
+
+			map.on('style.load', () => {
+				map.addLayer(customLayer, 'waterway-label')
+			})
+		</script>
+	</body>
+</html>

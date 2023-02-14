@@ -36,8 +36,7 @@ const ColorShader = {
 		const mediump vec3 luminanceWeighting = vec3(0.2125, 0.7154, 0.0721);
 		void main() {
 			vec4 textureColor = texture2D( tDiffuse, vUV );
-			if(textureColor.r==0.0 &&textureColor.g==0.0 &&textureColor.b==0.0 ){
-				// gl_FragColor = textureColor;
+			if(textureColor.r==0.0 &&textureColor.g==0.0 &&textureColor.b==0.0 &&textureColor.a==0.0){
 				gl_FragColor = textureColor;
 			}else{
 				vec3 color = textureColor.rgb + vec3(brightness);

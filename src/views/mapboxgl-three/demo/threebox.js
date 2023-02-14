@@ -615,7 +615,7 @@ Threebox.prototype = {
 	 * @param {defaultOptions} options
 	 */
 	init: function (map, glContext, options) {
-		this.options = options
+
 		this.map = map;
 		this.map.tb = this; //[jscastro] needed if we want to queryRenderedFeatures from map.onload
 
@@ -3795,7 +3795,7 @@ function loadObj(options, cb) {
 	}
 
 	materialLoader.load(options.mtl, loadObject, () => (null), error => {
-		console.warn("No material file found for SymbolLayer3D model " + options.mtl);
+		console.warn("No material file found for SymbolLayer3D model " + m);
 	});
 
 	function loadObject(materials) {
