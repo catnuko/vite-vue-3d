@@ -26,14 +26,15 @@
 		</style>
 	</head>
 	<body>
-		<script src="https://unpkg.com/three@0.117.1/build/three.min.js"></script>
+		<!-- <script src="https://unpkg.com/three@0.117.1/build/three.min.js"></script> -->
+		<script src="./threebox.js"></script>
 		<script src="https://unpkg.com/three@0.117.1/examples/js/loaders/GLTFLoader.js"></script>
+		<script src="https://unpkg.com/three@0.117.1/examples/js/shaders/CopyShader"></script>
 		<script src="https://unpkg.com/three@0.117.1/examples/js/postprocessing/EffectComposer"></script>
 		<script src="https://unpkg.com/three@0.117.1/examples/js/postprocessing/ShaderPass"></script>
 		<script src="https://unpkg.com/three@0.117.1/examples/js/postprocessing/RenderPass"></script>
 		<script src="./ColorShader.js"></script>
 		<script src="./ColorPass-117.js"></script>
-		<script src="./threebox.js"></script>
 
 		<div id="map"></div>
 		<script type="module">
@@ -60,6 +61,7 @@
 				onAdd: function (map, gl) {
 					window.tb = new Threebox(map, gl, {
 						defaultLights: true,
+						// afterimagePass: true,
 					})
 					//不能用
 					const testurl1 =
@@ -97,9 +99,45 @@
 						tb.add(soldier)
 					})
 					tb.scene.add(new THREE.AxesHelper(200))
-					// tb.scene.add(new THREE.CameraHelper(tb.camera))
-					// tb.scene.add(new THREE.DirectionalLightHelper(tb.lights.dirLightBack, 5))
-					// tb.scene.add(new THREE.DirectionalLightHelper(tb.lights.dirLight, 5))
+					tb.composer = new THREE.EffectComposer(tb.renderer)
+					tb.composer.addPass(new THREE.RenderPass(tb.scene, tb.camera))
+					const params2 = {
+						brightness: 0,
+						contrast: 1,
+						saturation: 1,
+						opacity: 1,
+					}
+					const colorPass = new ColorPass(params2)
+					tb.composer.addPass(colorPass)
+
+					this.gui = new GUI()
+					this.gui.width = 350
+					this.gui.add(params2, 'brightness').min(-1).max(1).onChange(()=>tb.update())
+					this.gui.add(params2, 'contrast').min(0).max(2).onChange(()=>tb.update())
+					this.gui.add(params2, 'saturation').min(0).max(2).onChange(()=>tb.update())
+					this.gui.add(params2, 'opacity').min(0).max(1).onChange(()=>tb.update())
+					tb.update = function () {
+						if (this.map.repaint) this.map.repaint = false
+
+						var timestamp = Date.now()
+
+						// Update any animations
+						this.objects.animationManager.update(timestamp)
+
+						this.updateLightHelper()
+
+						// Render the scene and repaint the map
+						// this.renderer.resetState() //update threejs r126
+						// this.renderer.render(this.scene, this.camera)
+
+						this.renderer.state.reset()
+						this.composer.render()
+
+						// [jscastro] Render any label
+						this.labelRenderer.render(this.scene, this.camera)
+						if (this.options.passiveRendering === false)
+							this.map.triggerRepaint()
+					}
 				},
 				render: function (gl, matrix) {
 					tb.update()
