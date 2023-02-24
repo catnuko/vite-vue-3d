@@ -14,5 +14,5 @@
 		"lib": ["esnext", "dom"],
 		"types": ["dtcesium-type"]
 	},
-	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "src/views/svgTest/main.js",]
+	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "src/views/svgTest/main.js", "src/views/jstest2/test.pdf", "src/views/jstest2/test.pdf",]
 }
